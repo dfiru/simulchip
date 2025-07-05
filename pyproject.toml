@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simulchip"
+version = "0.1.0"
+description = "Compare NetrunnerDB decklists against local card collection and generate PDF proxies"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "requests>=2.28.0",
+    "reportlab>=4.0.0",
+    "Pillow>=10.0.0",
+    "fire>=0.5.0",
+    "toml>=0.10.2",
+]
+
+[project.scripts]
+simulchip = "simulchip.cli.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.12.0",
+    "pylint>=2.17.0",
+    "flake8-docstrings>=1.7.0",
+    "flake8-bugbear>=23.0.0",
+    "flake8-comprehensions>=3.14.0",
+    "pep8-naming>=0.13.0",
+    "types-requests>=2.32.0",
+    "types-toml>=0.10.8",
+    "types-reportlab>=4.2.0",
+]
+
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-autodoc-typehints>=1.25.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "myst-parser>=2.0.0",
+]
+
+[tool.setuptools]
+packages = ["simulchip"]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+(
+  /(
+    \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_third_party = ["fire", "PIL", "reportlab", "requests", "toml"]
+known_first_party = ["simulchip"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+import_heading_stdlib = "Standard library imports"
+import_heading_thirdparty = "Third-party imports"
+import_heading_firstparty = "First-party imports"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pylint]
+max-line-length = 88
+fail-under = 9.0
+disable = [
+    "C0103",  # Invalid name
+    "C0114",  # Missing module docstring
+    "C0115",  # Missing class docstring
+    "C0116",  # Missing function docstring
+    "R0903",  # Too few public methods
+    "R0913",  # Too many arguments
+    "W0212",  # Protected access
+    "C0301",  # Line too long (we use black for this)
+    "R0902",  # Too many instance attributes
+    "R0914",  # Too many local variables  
+    "R0912",  # Too many branches
+    "R0917",  # Too many positional arguments
+    "W2301",  # Unnecessary ellipsis (needed for protocols)
+    "W0718",  # Catching too general exception
+]
+good-names = ["i", "j", "k", "ex", "fp", "id", "_"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [".git", "__pycache__", "dist", "build", "*.egg"]
+per-file-ignores = ["__init__.py:F401"]

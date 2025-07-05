@@ -1,0 +1,26 @@
+# Netrunner Proxy Collection File
+# This file tracks your owned cards, packs, and missing cards
+
+# List of owned packs (each pack provides 3x of each card)
+packs = [
+  "core",   # Core Set
+  "sg",     # System Gateway
+  "elev",   # Elevation
+  "ms",     # Midnight Sun
+]
+
+# Individual card counts (overrides pack defaults)
+[cards]
+# Maybe you only have 2 copies of Account Siphon
+"01016" = 2
+
+# Or you traded for extras of a specific card
+"30010" = 5  # Sure Gamble from System Gateway
+
+# Track missing/lost cards from your collection
+[missing]
+# Lost to Cupellation at the last tournament!
+"34080" = 1  # Cupellation
+
+# Dog ate one of your Hedge Funds
+"01110" = 1  # Hedge Fund
