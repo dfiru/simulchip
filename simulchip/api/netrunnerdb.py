@@ -150,6 +150,7 @@ class NetrunnerDBAPI:
         self._last_request_time: float = 0
         self._cards_cache: Optional[Dict[str, CardData]] = None
         self._packs_cache: Optional[List[PackData]] = None
+        self._cycles_cache: Optional[Dict[str, str]] = None
         self.cache = CacheManager(cache_dir)
 
     def _rate_limit(self) -> None:
@@ -297,6 +298,46 @@ class NetrunnerDBAPI:
             raise
         except Exception as e:
             raise APIError(f"Failed to process packs data: {str(e)}") from e
+
+    def get_cycle_name_mapping(self) -> Dict[str, str]:
+        """Fetch cycle code to name mapping with caching.
+
+        Returns:
+            Dictionary mapping cycle codes to cycle names
+
+        Raises:
+            APIError: If API request fails
+        """
+        if self._cycles_cache is not None:
+            return self._cycles_cache
+
+        try:
+            response = self._make_request("cycles")
+
+            if "data" not in response:
+                raise APIError("Missing 'data' field in cycles response")
+
+            if not isinstance(response["data"], list):
+                raise APIError(
+                    f"Expected list in 'data' field, got {type(response['data']).__name__}"
+                )
+
+            # Create mapping from cycle code to cycle name
+            cycles_mapping = {}
+            for cycle_data in response["data"]:
+                if isinstance(cycle_data, dict):
+                    code = cycle_data.get("code")
+                    name = cycle_data.get("name")
+                    if code and name:
+                        cycles_mapping[code] = name
+
+            self._cycles_cache = cycles_mapping
+            return cycles_mapping
+
+        except APIError:
+            raise
+        except Exception as e:
+            raise APIError(f"Failed to process cycles data: {str(e)}") from e
 
     def get_decklist(self, decklist_id: str) -> DecklistData:
         """Fetch a specific decklist by ID with validation.

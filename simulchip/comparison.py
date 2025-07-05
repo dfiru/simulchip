@@ -390,11 +390,58 @@ class DecklistComparer:
         else:
             lines.extend(["Missing cards by pack:", "-" * 50])
 
-            for pack_name, cards in sorted(comparison_result.missing_by_pack.items()):
+            # Get pack data and cycle mapping for sorting and display
+            all_packs = {p["code"]: p for p in self.api.get_all_packs()}
+            cycle_mapping = self.api.get_cycle_name_mapping()
+            
+            # Group packs by cycle and sort by release date
+            packs_by_cycle = {}
+            for pack_name, cards in comparison_result.missing_by_pack.items():
                 missing_cards = [c for c in cards if c.missing_count > 0]
                 if missing_cards:
-                    lines.append(f"\n{pack_name}:")
-                    for card in sorted(missing_cards, key=lambda c: c.title):
+                    pack_code = missing_cards[0].pack_code
+                    pack_data = all_packs.get(pack_code)
+                    
+                    if pack_data:
+                        cycle_code = pack_data.get("cycle_code", "unknown")
+                        cycle_name = cycle_mapping.get(cycle_code, "Unknown Cycle")
+                        release_date = pack_data.get("date_release", "1900-01-01")
+                        
+                        if cycle_name not in packs_by_cycle:
+                            packs_by_cycle[cycle_name] = []
+                        
+                        packs_by_cycle[cycle_name].append({
+                            "name": pack_name,
+                            "code": pack_code,
+                            "release_date": release_date,
+                            "missing_cards": missing_cards
+                        })
+            
+            # Sort cycles by their newest pack's release date (newest cycle first)
+            def get_cycle_sort_key(cycle_item):
+                cycle_name, packs = cycle_item
+                latest_date = max(pack["release_date"] for pack in packs)
+                return latest_date
+            
+            sorted_cycles = sorted(
+                packs_by_cycle.items(),
+                key=get_cycle_sort_key,
+                reverse=True  # Newest cycle first
+            )
+            
+            # Generate output grouped by cycle
+            for cycle_name, packs in sorted_cycles:
+                # Add cycle heading
+                lines.append(f"\n=== {cycle_name} ===")
+                
+                # Sort packs within cycle by release date (newest first)
+                sorted_packs = sorted(packs, key=lambda p: p["release_date"], reverse=True)
+                
+                for pack in sorted_packs:
+                    pack_header = f"\n{pack['name']} ({pack['release_date']}):"
+                    lines.append(pack_header)
+                    
+                    for card in sorted(pack["missing_cards"], key=lambda c: c.title):
                         lines.append(
                             f"  {card.missing_count}x {card.title} ({card.code})"
                         )
