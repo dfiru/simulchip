@@ -12,7 +12,7 @@ import toml
 
 # First-party imports
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
-from simulchip.cli.main import NetrunnerProxyCLI
+from simulchip.cli.main import SimulchipCLI
 from simulchip.collection.manager import CollectionManager
 
 
@@ -122,7 +122,7 @@ class TestCLIInit:
         """Test creating a TOML collection file."""
         collection_file = tmp_path / "test_collection.toml"
 
-        cli = NetrunnerProxyCLI()
+        cli = SimulchipCLI()
 
         # Mock input to avoid interactive prompt
         with patch("builtins.input", return_value="y"):
@@ -143,7 +143,7 @@ class TestCLIPackManagement:
 
     def test_add_pack(self, temp_collection_file, mock_api):
         """Test adding a pack to collection."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.add_pack(temp_collection_file, "ms")
 
         # Verify pack was added
@@ -152,7 +152,7 @@ class TestCLIPackManagement:
 
     def test_remove_pack(self, temp_collection_file, mock_api):
         """Test removing a pack from collection."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
 
         # First verify the pack exists
         manager = CollectionManager(Path(temp_collection_file), mock_api)
@@ -171,7 +171,7 @@ class TestCLICardManagement:
 
     def test_add_card(self, temp_collection_file, mock_api):
         """Test adding individual cards."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.add(temp_collection_file, "30010", count=2)
 
         # Verify card was added
@@ -180,7 +180,7 @@ class TestCLICardManagement:
 
     def test_remove_card(self, temp_collection_file, mock_api):
         """Test removing individual cards."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
 
         # Use a card that doesn't have any missing entries so removal affects actual cards
         initial_count = CollectionManager(
@@ -200,7 +200,7 @@ class TestCLIMissingCards:
 
     def test_mark_missing(self, temp_collection_file, mock_api):
         """Test marking cards as missing."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.mark_missing(temp_collection_file, "30010", count=1)
 
         # Verify card was marked as missing
@@ -210,7 +210,7 @@ class TestCLIMissingCards:
 
     def test_found_missing(self, temp_collection_file, mock_api):
         """Test marking missing cards as found."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
 
         # Verify we have missing cards to start
         manager = CollectionManager(Path(temp_collection_file), mock_api)
@@ -230,7 +230,7 @@ class TestCLIStats:
 
     def test_stats_display(self, temp_collection_file, mock_api, capsys):
         """Test stats command displays information."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.stats(temp_collection_file)
 
         captured = capsys.readouterr()
@@ -245,7 +245,7 @@ class TestCLIListPacks:
 
     def test_list_packs(self, mock_api, capsys):
         """Test listing available packs."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.list_packs()
 
         captured = capsys.readouterr()
@@ -258,7 +258,7 @@ class TestCLICompare:
 
     def test_compare_decklist(self, temp_collection_file, mock_api, capsys):
         """Test comparing a decklist against collection."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         cli.compare(
             "https://netrunnerdb.com/en/decklist/12345678-1234-5678-9012-123456789012/test-deck",
             collection=temp_collection_file,
@@ -275,7 +275,7 @@ class TestCLICompare:
         self, mock_pdf_gen, temp_collection_file, mock_api, tmp_path
     ):
         """Test compare command with PDF generation."""
-        cli = NetrunnerProxyCLI(api=mock_api)
+        cli = SimulchipCLI(api=mock_api)
         output_file = tmp_path / "test_output.pdf"
 
         # Mock PDF generator
@@ -306,7 +306,7 @@ class TestCLICache:
             "cache_size_mb": 15.5,
         }
 
-        cli = NetrunnerProxyCLI(cache_manager=mock_cache_instance)
+        cli = SimulchipCLI(cache_manager=mock_cache_instance)
         cli.cache(stats=True)
 
         captured = capsys.readouterr()
@@ -317,7 +317,7 @@ class TestCLICache:
     def test_cache_clear(self):
         """Test cache clear functionality."""
         mock_cache_instance = Mock()
-        cli = NetrunnerProxyCLI(cache_manager=mock_cache_instance)
+        cli = SimulchipCLI(cache_manager=mock_cache_instance)
         cli.cache(clear=True)
         mock_cache_instance.clear_cache.assert_called_once()
 
