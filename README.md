@@ -1,4 +1,4 @@
-# Simulchip Generator
+# Simulchip - Netrunner Proxy Library
 
 [![CI](https://github.com/dfiru/simulchip/actions/workflows/ci.yml/badge.svg)](https://github.com/dfiru/simulchip/actions/workflows/ci.yml)
 [![Documentation](https://github.com/dfiru/simulchip/actions/workflows/docs.yml/badge.svg)](https://dfiru.github.io/simulchip/)
@@ -10,164 +10,189 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-I just started playing Netrunner about a month ago when I received a copy of System Gateway and Elevation. I love the game and I quickly realized that if I wanted to play in person, I'd have to play Standard. And if I wanted to play Standard, I would need to proxy quite a bit of cards. 
+A Python library for comparing NetrunnerDB decklists against your local card collection and generating print-ready PDF proxy sheets for missing cards.
 
-This work is heavily inspired by some work I did for Marvel Champions to solve a similar problem. I've kept that work private over concerns about Marvel and FFG copyrights. However, with Null Signal Games supporting the game and proxies not only being legal but encouraged, I thought it was time to bring this all together here. 
+I just started playing Netrunner about a month ago when I received a copy of System Gateway and Elevation. I love the game and I quickly realized that if I wanted to play in person, I'd have to play Standard. And if I wanted to play Standard, I would need to proxy quite a bit of cards.
 
-The result is a clean, efficient CLI tool that does exactly what it says on the tin - no fuss, no bloat, just functional software that gets the job done. I hope you enjoy.
+This work is heavily inspired by some work I did for Marvel Champions to solve a similar problem. I've kept that work private over concerns about Marvel and FFG copyrights. However, with Null Signal Games supporting the game and proxies not only being legal but encouraged, I thought it was time to bring this all together here.
+
+The result is a clean, efficient Python library that does exactly what it says on the tin - no fuss, no bloat, just functional software that gets the job done. I hope you enjoy.
 
 ---
 
-A Python CLI tool to compare NetrunnerDB decklists against your local card collection and generate print-ready PDF proxy sheets for missing cards.
-
 ## Features
 
-- 🃏 **Smart Decklist Input**: Accept full NetrunnerDB URLs
+- 🃏 **Smart Decklist Input**: Accept full NetrunnerDB URLs or deck IDs
 - 📦 **Pack-Based Collection**: Manage your collection by entire packs instead of individual cards
 - 🎨 **High-Quality Proxies**: Generate PDFs with actual card images from NetrunnerDB
 - 📐 **Perfect Dimensions**: Cards sized exactly to Netrunner specifications (63mm x 88mm)
 - ✂️ **Cut Guidelines**: Dashed lines show exactly where to cut for perfect cards
 - 💾 **Smart Caching**: Downloads card data and images once, reuses for speed
 - 🏷️ **Organized Output**: Files named by faction and deck for easy organization
+- 🐍 **Pure Python**: Simple library you can integrate into your own tools
 
 ## Installation
 
-### Option 1: Download Executable (Recommended)
-Download the latest release for your platform from the [Releases page](https://github.com/dfiru/simulchip/releases):
-- **Windows**: `simulchip-windows.zip` - Extract and run `simulchip.exe`
-- **macOS**: `simulchip-macos.tar.gz` - Extract, make executable (`chmod +x simulchip`), and run
-- **Linux**: `simulchip-linux.tar.gz` - Extract, make executable (`chmod +x simulchip`), and run
-
-### Option 2: Install from Source
+### Option 1: Install from Source
 ```bash
 git clone https://github.com/dfiru/simulchip.git
 cd simulchip
 pip install -e .
 ```
 
+### Option 2: Use as Library Dependency
+```bash
+pip install git+https://github.com/dfiru/simulchip.git
+```
+
 ## Quick Start
 
-### 1. Initialize Your Collection
+### 1. Run the Example Script
 ```bash
-# Create a new collection file
-simulchip init my_collection.toml
-
-# Add packs you own (much easier than individual cards!)
-simulchip add_pack my_collection.toml sg    # System Gateway
-simulchip add_pack my_collection.toml elev  # Elevation
+python example.py
 ```
 
-### 2. Generate Proxies
-```bash
-# Just paste the NetrunnerDB URL!
-simulchip compare "https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c/aggravated-assault-zahya" \
-  --collection my_collection.toml \
-  --output .
+This will demonstrate all the main library features and create example files.
+
+### 2. Basic Library Usage
+
+```python
+from pathlib import Path
+from simulchip.api.netrunnerdb import NetrunnerDBAPI
+from simulchip.collection.manager import CollectionManager
+from simulchip.comparison import DecklistComparer
+from simulchip.pdf.generator import ProxyPDFGenerator
+
+# Initialize components
+api = NetrunnerDBAPI()
+collection_path = Path("my_collection.toml")
+collection = CollectionManager(collection_path, api)
+
+# Add packs to your collection
+collection.add_pack("sg")    # System Gateway
+collection.add_pack("core")  # Core Set
+collection.save_collection()
+
+# Compare a decklist
+comparer = DecklistComparer(api, collection)
+result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
+
+print(f"Missing {result.stats.missing_cards} cards from {result.decklist_name}")
+
+# Generate PDF for missing cards
+if result.stats.missing_cards > 0:
+    pdf_gen = ProxyPDFGenerator(api)
+    proxy_cards = comparer.get_proxy_cards(result)
+    pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
 ```
 
-### 3. Print and Cut
-Open the generated PDF and print on standard letter paper. Follow the dashed cut lines for perfectly sized Netrunner cards!
+## Core Library Components
 
-## CLI Commands
+### NetrunnerDBAPI
+Handles all communication with the NetrunnerDB API.
 
-### `compare` - Generate Proxy PDFs
-Compare a decklist against your collection and generate proxies for missing cards.
+```python
+from simulchip.api.netrunnerdb import NetrunnerDBAPI
 
-```bash
-simulchip compare <decklist_url> [OPTIONS]
+api = NetrunnerDBAPI()
+
+# Get all cards
+cards = api.get_all_cards()
+
+# Get all packs
+packs = api.get_all_packs()
+
+# Get specific pack
+pack = api.get_pack_by_code("sg")
+
+# Get specific card
+card = api.get_card_by_code("30010")
+
+# Get decklist
+decklist = api.get_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
 ```
 
-**Examples:**
-```bash
-# Full URL (just copy from browser)
-simulchip compare "https://netrunnerdb.com/en/decklist/12345/my-deck" --collection cards.toml --output .
+### CollectionManager
+Manages your local card collection stored in TOML files.
 
-# Without card images (faster)
-simulchip compare "https://netrunnerdb.com/en/decklist/12345/my-deck" --collection cards.toml --output proxies.pdf --no_images
+```python
+from simulchip.collection.manager import CollectionManager
+from pathlib import Path
 
-# Group by pack in PDF
-simulchip compare "https://netrunnerdb.com/en/decklist/12345/my-deck" --collection cards.toml --output proxies.pdf --group_by_pack
+collection = CollectionManager(Path("collection.toml"), api)
+
+# Add entire packs
+collection.add_pack("sg")
+collection.add_pack("core")
+
+# Add individual cards
+collection.add_card("30010", 3)  # 3 copies of Zahya
+
+# Mark cards as missing/lost
+collection.add_missing_card("30010", 1)  # Lost 1 copy
+
+# Remove cards
+collection.remove_card("30010", 1)
+
+# Get card counts
+count = collection.get_card_count("30010")  # Available copies
+
+# Save changes
+collection.save_collection()
 ```
 
-**Options:**
-- `--collection` / `-c`: Path to your collection file
-- `--output` / `-o`: Output PDF path (or directory for auto-naming)
-- `--no_images`: Generate without downloading card images (faster)
-- `--group_by_pack`: Organize cards by pack in the PDF
-- `--page_size`: Paper size (`letter` or `a4`, default: `letter`)
+### DecklistComparer
+Compares NetrunnerDB decklists against your collection.
 
-### Collection Management
+```python
+from simulchip.comparison import DecklistComparer
 
-The collection file is a simple TOML format - if you're comfortable editing it directly, go ahead! The CLI provides convenience functions to safely manage your collection without worrying about syntax errors or data corruption.
+comparer = DecklistComparer(api, collection)
 
-#### `init` - Create Collection File
-```bash
-simulchip init my_collection.toml
+# Compare by decklist ID
+result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
+
+# Access comparison results
+print(f"Deck: {result.decklist_name}")
+print(f"Identity: {result.identity_name}")
+print(f"Total cards: {result.stats.total_cards}")
+print(f"Owned: {result.stats.owned_cards}")
+print(f"Missing: {result.stats.missing_cards}")
+
+# Get formatted report
+report = comparer.format_comparison_report(result)
+print(report)
+
+# Get proxy cards for PDF generation
+proxy_cards = comparer.get_proxy_cards(result)
 ```
 
-#### `add_pack` / `remove_pack` - Manage Packs
-```bash
-# Add entire pack (assumes 3 copies of each card)
-simulchip add_pack my_collection.toml core
+### ProxyPDFGenerator
+Generates print-ready PDFs with card images.
 
-# Remove entire pack
-simulchip remove_pack my_collection.toml core
-```
+```python
+from simulchip.pdf.generator import ProxyPDFGenerator
 
-#### `add` / `remove` - Manage Individual Cards
-```bash
-# Add specific cards
-simulchip add my_collection.toml 01001 --count 3
+pdf_gen = ProxyPDFGenerator(api, page_size="letter")  # or "a4"
 
-# Remove specific cards
-simulchip remove my_collection.toml 01001 --count 1
-```
-
-#### `mark_missing` / `found` - Track Missing Cards
-Sometimes cards go missing from your collection (maybe someone played Cupellation a little too realistically at the last local?). Mark them as missing to ensure you print extras when needed:
-
-```bash
-# Mark cards as missing from your collection
-# Perfect for when your friend "Cupellates" your card and takes it home
-simulchip mark_missing my_collection.toml 34080 --count 1
-
-# Mark missing cards as found (when you finally get your card back)
-simulchip found my_collection.toml 34080 --count 1
-```
-
-The missing cards feature accounts for lost, damaged, or "permanently borrowed" cards by reducing your available count. When comparing decklists, you'll automatically get proxies to replace what's missing.
-
-#### `list_packs` - Browse Available Packs
-```bash
-simulchip list_packs
-```
-
-#### `stats` - View Collection Statistics
-```bash
-simulchip stats my_collection.toml
-```
-
-### Cache Management
-
-#### `cache` - Manage Downloaded Data
-```bash
-# View cache statistics
-simulchip cache --stats
-
-# Clear all cached data
-simulchip cache --clear
+# Generate PDF
+pdf_gen.generate_proxy_pdf(
+    proxy_cards,
+    Path("output.pdf"),
+    download_images=True,    # Include card images
+    group_by_pack=True      # Group cards by pack
+)
 ```
 
 ## Collection File Format
 
-Define your collection using packs (recommended) and/or individual cards:
+Your collection is stored in a simple TOML file:
 
-### TOML Format
 ```toml
 # Own entire packs (3 copies of each card)
 packs = [
   "core",   # Core Set
-  "sg",     # System Gateway  
+  "sg",     # System Gateway
   "elev",   # Elevation
   "ms",     # Midnight Sun
 ]
@@ -182,12 +207,69 @@ packs = [
 "34080" = 1  # Lost to Cupellation!
 ```
 
+## Building Your Own Tools
+
+The library is designed to be flexible. Here are some ideas for custom tools you could build:
+
+### Automatic Collection Sync
+```python
+# Sync your collection with a CSV export from another tool
+import csv
+from simulchip.collection.manager import CollectionManager
+
+def sync_from_csv(csv_path, collection_path):
+    collection = CollectionManager(collection_path, api)
+
+    with open(csv_path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            collection.add_card(row['card_code'], int(row['quantity']))
+
+    collection.save_collection()
+```
+
+### Batch Proxy Generation
+```python
+# Generate proxies for multiple decklists
+def generate_proxies_for_decklists(decklist_urls, collection_path):
+    collection = CollectionManager(collection_path, api)
+    comparer = DecklistComparer(api, collection)
+    pdf_gen = ProxyPDFGenerator(api)
+
+    for url in decklist_urls:
+        deck_id = extract_decklist_id(url)
+        result = comparer.compare_decklist(deck_id)
+
+        if result.stats.missing_cards > 0:
+            proxy_cards = comparer.get_proxy_cards(result)
+            output_path = Path(f"{result.identity_faction}_{result.decklist_name}.pdf")
+            pdf_gen.generate_proxy_pdf(proxy_cards, output_path)
+```
+
+### Custom Reports
+```python
+# Generate a collection completion report
+def collection_completion_report(collection_path):
+    collection = CollectionManager(collection_path, api)
+    all_packs = api.get_all_packs()
+
+    for pack in all_packs:
+        pack_cards = api.get_cards_by_pack(pack['code'])
+        owned_count = sum(1 for card in pack_cards
+                         if collection.get_card_count(card['code']) > 0)
+        completion = owned_count / len(pack_cards) * 100
+        print(f"{pack['name']}: {completion:.1f}% complete")
+```
+
 ## Finding Pack and Card Codes
 
 ### Pack Codes
-Use the `list_packs` command to see all available packs:
-```bash
-simulchip list_packs
+```python
+# List all available packs
+api = NetrunnerDBAPI()
+packs = api.get_all_packs()
+for pack in sorted(packs, key=lambda p: p.get("date_release", ""), reverse=True):
+    print(f"{pack['code']}: {pack['name']}")
 ```
 
 Common pack codes:
@@ -204,33 +286,6 @@ Card codes follow the format: `PPNNN` where:
 
 Examples: `01001` (Noise), `30010` (Zahya), `33004` (Steelskin Scarring)
 
-## Output Examples
-
-### Console Output
-```
-[C] Zahya Sadeghi: Versatile Smuggler
-Decklist: Aggravated Assault Zahya (1st/undefeated at Denver Megacity)
-ID: 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
-
-Total cards needed: 46
-Cards owned: 15
-Cards missing: 31
-
-Missing cards by pack:
---------------------------------------------------
-
-Midnight Sun:
-  2x Cezve (33017)
-  3x Steelskin Scarring (33004)
-...
-```
-
-### Generated Files
-When outputting to a directory, files are automatically named:
-- `crim_Aggravated_Assault_Zahya.pdf`
-- `hb_Glacier_Control_Deck.pdf`
-- `anarch_Noise_Mill.pdf`
-
 ## PDF Features
 
 - **Exact Card Size**: 63mm × 88mm (official Netrunner dimensions)
@@ -240,31 +295,16 @@ When outputting to a directory, files are automatically named:
 - **Smart Fallback**: Text placeholders for cards without images
 - **High Quality**: Vector graphics for clean printing
 
-## Documentation
-
-Full API documentation is available at [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
-
-## Tips
-
-1. **Start with Packs**: Much easier than tracking individual cards
-2. **Use Full URLs**: Just copy-paste from NetrunnerDB browser
-3. **Directory Output**: Let the tool name files automatically
-4. **Cache Management**: Clear cache if you want fresh card data
-5. **Test Print**: Print one page first to verify your printer settings
-
-## Requirements
-
-- Python 3.10+
-- Internet connection (for downloading card data/images)
-- PDF viewer for reviewing proxies
-
 ## Dependencies
 
-- `fire` - CLI framework
-- `requests` - HTTP requests
+- `requests` - HTTP requests to NetrunnerDB API
 - `reportlab` - PDF generation
 - `Pillow` - Image processing
 - `toml` - TOML file support
+
+## Documentation
+
+Full API documentation is available at [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
 
 ## Contributing
 

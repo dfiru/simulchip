@@ -1,86 +1,108 @@
 Quick Start Guide
 =================
 
-This guide will help you get started with Simulchip.
+This guide will help you get started with the Simulchip library.
 
-Initialize Your Collection
---------------------------
+Installation
+------------
 
-First, create a collection file to track your owned cards:
+Install from source:
 
 .. code-block:: bash
 
-   simulchip init
+   git clone https://github.com/dfiru/simulchip.git
+   cd simulchip
+   pip install -e .
 
-This creates a ``collection.toml`` file in your current directory.
+Or install as a dependency:
+
+.. code-block:: bash
+
+   pip install git+https://github.com/dfiru/simulchip.git
+
+Running the Example
+-------------------
+
+The quickest way to see Simulchip in action is to run the example script:
+
+.. code-block:: bash
+
+   python example.py
+
+This will demonstrate all the main library features and create example files.
+
+Basic Library Usage
+-------------------
+
+Initialize Components
+~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   from pathlib import Path
+   from simulchip.api.netrunnerdb import NetrunnerDBAPI
+   from simulchip.collection.manager import CollectionManager
+   from simulchip.comparison import DecklistComparer
+   from simulchip.pdf.generator import ProxyPDFGenerator
+
+   # Initialize API and collection
+   api = NetrunnerDBAPI()
+   collection_path = Path("my_collection.toml")
+   collection = CollectionManager(collection_path, api)
 
 Managing Your Collection
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add Entire Packs
-~~~~~~~~~~~~~~~~
+Add entire packs to your collection:
 
-Add all cards from a pack to your collection:
+.. code-block:: python
 
-.. code-block:: bash
+   # Add packs
+   collection.add_pack("sg")    # System Gateway
+   collection.add_pack("core")  # Core Set
 
-   simulchip add-pack gateway
-   simulchip add-pack system-update-2021
+   # Add individual cards
+   collection.add_card("30010", 3)  # 3 copies of Zahya
 
-Add Individual Cards
-~~~~~~~~~~~~~~~~~~~~
+   # Mark cards as missing
+   collection.add_missing_card("30010", 1)  # Lost 1 copy
 
-Add specific quantities of individual cards:
-
-.. code-block:: bash
-
-   simulchip add-card "hedge-fund:3"
-   simulchip add-card "sure-gamble:2"
-
-View Collection Statistics
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-See what's in your collection:
-
-.. code-block:: bash
-
-   simulchip stats
-
-List Available Packs
-~~~~~~~~~~~~~~~~~~~~
-
-View all available packs:
-
-.. code-block:: bash
-
-   simulchip list-packs
+   # Save changes
+   collection.save_collection()
 
 Comparing Decklists
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Compare a NetrunnerDB decklist against your collection:
 
-.. code-block:: bash
+.. code-block:: python
 
-   simulchip compare https://netrunnerdb.com/en/decklist/12345
+   comparer = DecklistComparer(api, collection)
+   result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
 
-Generate PDF proxies for missing cards:
+   print(f"Missing {result.stats.missing_cards} cards from {result.decklist_name}")
 
-.. code-block:: bash
+Generating PDF Proxies
+~~~~~~~~~~~~~~~~~~~~~~
 
-   simulchip compare https://netrunnerdb.com/en/decklist/12345 -o missing_cards.pdf
+Generate proxy PDFs for missing cards:
 
-Managing the Cache
-------------------
+.. code-block:: python
 
-View cache statistics:
+   if result.stats.missing_cards > 0:
+       pdf_gen = ProxyPDFGenerator(api)
+       proxy_cards = comparer.get_proxy_cards(result)
+       pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
 
-.. code-block:: bash
+Building Custom Tools
+---------------------
 
-   simulchip cache stats
+The library is designed to be flexible. You can build your own tools for:
 
-Clear the cache if needed:
+- Batch processing multiple decklists
+- Custom collection management workflows
+- Integration with other Netrunner tools
+- Web interfaces for proxy generation
+- Automated collection syncing
 
-.. code-block:: bash
-
-   simulchip cache clear
+See the main README for detailed examples of building custom tools.

@@ -6,7 +6,6 @@ This section contains the complete API reference for Simulchip.
 .. toctree::
    :maxdepth: 2
 
-   cli
    api
    collection
    pdf
@@ -19,7 +18,6 @@ Core Modules
    :toctree: generated
    :recursive:
 
-   simulchip.cli.main
    simulchip.api.netrunnerdb
    simulchip.collection.manager
    simulchip.pdf.generator
