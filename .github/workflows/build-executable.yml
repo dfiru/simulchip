@@ -28,17 +28,17 @@ jobs:
     
     - name: Build executable
       run: |
-        pyinstaller netrunner-proxy.spec
+        pyinstaller simulchip.spec
     
     - name: Test executable
       run: |
-        ./dist/netrunner-proxy.exe --help
+        ./dist/simulchip.exe --help
     
     - name: Upload executable
       uses: actions/upload-artifact@v4
       with:
-        name: netrunner-proxy-windows
-        path: dist/netrunner-proxy.exe
+        name: simulchip-windows
+        path: dist/simulchip.exe
     
 
   build-macos:
@@ -59,17 +59,17 @@ jobs:
     
     - name: Build executable
       run: |
-        pyinstaller netrunner-proxy.spec
+        pyinstaller simulchip.spec
     
     - name: Test executable
       run: |
-        ./dist/netrunner-proxy --help
+        ./dist/simulchip --help
     
     - name: Upload executable
       uses: actions/upload-artifact@v4
       with:
-        name: netrunner-proxy-macos
-        path: dist/netrunner-proxy
+        name: simulchip-macos
+        path: dist/simulchip
     
 
   build-linux:
@@ -90,17 +90,17 @@ jobs:
     
     - name: Build executable
       run: |
-        pyinstaller netrunner-proxy.spec
+        pyinstaller simulchip.spec
     
     - name: Test executable
       run: |
-        ./dist/netrunner-proxy --help
+        ./dist/simulchip --help
     
     - name: Upload executable
       uses: actions/upload-artifact@v4
       with:
-        name: netrunner-proxy-linux
-        path: dist/netrunner-proxy
+        name: simulchip-linux
+        path: dist/simulchip
 
   create-release:
     needs: [build-windows, build-macos, build-linux]
@@ -126,20 +126,20 @@ jobs:
     - name: Create archives and upload
       run: |
         # Create Windows zip
-        cd artifacts/netrunner-proxy-windows
-        zip netrunner-proxy-windows.zip netrunner-proxy.exe
-        gh release upload ${{ github.ref_name }} netrunner-proxy-windows.zip --clobber
+        cd artifacts/simulchip-windows
+        zip simulchip-windows.zip simulchip.exe
+        gh release upload ${{ github.ref_name }} simulchip-windows.zip --clobber
         cd ../..
         
         # Create macOS tar.gz
-        cd artifacts/netrunner-proxy-macos
-        tar -czf netrunner-proxy-macos.tar.gz netrunner-proxy
-        gh release upload ${{ github.ref_name }} netrunner-proxy-macos.tar.gz --clobber
+        cd artifacts/simulchip-macos
+        tar -czf simulchip-macos.tar.gz simulchip
+        gh release upload ${{ github.ref_name }} simulchip-macos.tar.gz --clobber
         cd ../..
         
         # Create Linux tar.gz
-        cd artifacts/netrunner-proxy-linux
-        tar -czf netrunner-proxy-linux.tar.gz netrunner-proxy
-        gh release upload ${{ github.ref_name }} netrunner-proxy-linux.tar.gz --clobber
+        cd artifacts/simulchip-linux
+        tar -czf simulchip-linux.tar.gz simulchip
+        gh release upload ${{ github.ref_name }} simulchip-linux.tar.gz --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

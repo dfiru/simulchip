@@ -28,23 +28,23 @@ jobs:
     
     - name: Format check with black
       run: |
-        black --check netrunner_proxy tests
+        black --check simulchip tests
     
     - name: Import sort check with isort
       run: |
-        isort --check-only netrunner_proxy tests
+        isort --check-only simulchip tests
     
     - name: Lint with flake8
       run: |
-        flake8 netrunner_proxy tests
+        flake8 simulchip tests
     
     - name: Type check with mypy
       run: |
-        mypy netrunner_proxy
+        mypy simulchip
     
     - name: Lint with pylint
       run: |
-        pylint netrunner_proxy
+        pylint simulchip
 
   test:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
     
     - name: Run tests with pytest
       run: |
-        pytest tests/ -v --cov=netrunner_proxy --cov-report=xml
+        pytest tests/ -v --cov=simulchip --cov-report=xml
     
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.11'
