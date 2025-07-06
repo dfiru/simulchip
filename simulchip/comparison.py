@@ -421,7 +421,7 @@ class DecklistComparer:
 
             # Sort cycles by their newest pack's release date (newest cycle first)
             def get_cycle_sort_key(cycle_item: Tuple[str, List[Dict[str, Any]]]) -> str:
-                cycle_name, packs = cycle_item
+                _, packs = cycle_item
                 latest_date: str = max(pack["release_date"] for pack in packs)
                 return latest_date
 
