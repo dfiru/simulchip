@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 # Third-party imports
 import requests
 from PIL import Image
-from PIL.ImageFile import ImageFile
 
 
 class CacheManager:
@@ -139,11 +138,11 @@ class CacheManager:
             response.raise_for_status()
 
             # Load image
-            img: ImageFile = Image.open(io.BytesIO(response.content))
+            img: Image.Image = Image.open(io.BytesIO(response.content))
 
             # Convert to RGB if necessary (for consistency)
             if img.mode != "RGB":
-                img = img.convert("RGB")  # type: ignore[assignment]
+                img = img.convert("RGB")
 
             # Save to cache
             # Determine extension from URL

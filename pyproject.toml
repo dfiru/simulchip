@@ -39,6 +39,7 @@ dev = [
     "types-requests>=2.32.0",
     "types-toml>=0.10.8",
     "types-reportlab>=4.2.0",
+    "pre-commit>=3.0.0",
 ]
 
 docs = [
@@ -110,7 +111,7 @@ disable = [
     "W0212",  # Protected access
     "C0301",  # Line too long (we use black for this)
     "R0902",  # Too many instance attributes
-    "R0914",  # Too many local variables  
+    "R0914",  # Too many local variables
     "R0912",  # Too many branches
     "R0917",  # Too many positional arguments
     "W2301",  # Unnecessary ellipsis (needed for protocols)
