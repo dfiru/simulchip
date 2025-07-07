@@ -246,3 +246,36 @@ def format_deck_size(card_count: int) -> str:
         raise ValueError(f"Card count cannot be negative: {card_count}")
 
     return f"{card_count} card{'s' if card_count != 1 else ''}"
+
+
+def get_faction_side(faction_code: str) -> str:
+    """Determine if a faction is corporation or runner side.
+
+    Args:
+        faction_code: Faction code from NetrunnerDB
+
+    Returns:
+        Either "corporation" or "runner"
+
+    Examples:
+        >>> get_faction_side("haas-bioroid")
+        'corporation'
+
+        >>> get_faction_side("anarch")
+        'runner'
+    """
+    if not faction_code:
+        return "runner"  # Default to runner for unknown factions
+
+    faction_code = faction_code.lower().strip()
+
+    # Corporation factions
+    corp_factions = {
+        FactionCode.HAAS_BIOROID.value,
+        FactionCode.JINTEKI.value,
+        FactionCode.NBN.value,
+        FactionCode.WEYLAND.value,
+        FactionCode.NEUTRAL_CORP.value,
+    }
+
+    return "corporation" if faction_code in corp_factions else "runner"

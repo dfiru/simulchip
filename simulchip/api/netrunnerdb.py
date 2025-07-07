@@ -299,6 +299,44 @@ class NetrunnerDBAPI:
         except Exception as e:
             raise APIError(f"Failed to process packs data: {str(e)}") from e
 
+    def get_packs_by_release_date(self, newest_first: bool = True) -> List[PackData]:
+        """Get all packs sorted by release date with enriched cycle names.
+
+        Args:
+            newest_first: If True, sort newest first. If False, sort oldest first.
+
+        Returns:
+            List of pack data sorted by release date
+
+        Raises:
+            APIError: If API request fails
+        """
+        packs = self.get_all_packs()
+
+        # Get cycle name mapping to enrich pack data
+        cycle_names = self.get_cycle_name_mapping()
+
+        # Filter valid packs and sort by release date
+        valid_packs = []
+        for pack in packs:
+            if pack.get("code") and pack.get("name"):
+                # Enrich with full cycle name if we have the cycle code
+                if "cycle_code" in pack and pack["cycle_code"] in cycle_names:
+                    pack = pack.copy()  # Make a copy to avoid modifying cached data
+                    pack["cycle"] = cycle_names[pack["cycle_code"]]
+
+                # Use empty string for missing dates to sort them consistently
+                date_release = pack.get("date_release") or ""
+                valid_packs.append((date_release, pack))
+
+        # Sort by date, putting empty dates at the end when newest_first=True
+        if newest_first:
+            valid_packs.sort(key=lambda x: x[0] if x[0] else "0000", reverse=True)
+        else:
+            valid_packs.sort(key=lambda x: x[0] if x[0] else "9999", reverse=False)
+
+        return [pack for _, pack in valid_packs]
+
     def get_cycle_name_mapping(self) -> Dict[str, str]:
         """Fetch cycle code to name mapping with caching.
 

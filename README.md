@@ -45,16 +45,33 @@ pip install -e .
 pip install git+https://github.com/dfiru/simulchip.git
 ```
 
+After installation, you'll have both the Python library and the `simulchip` command-line tool available.
+
 ## Quick Start
 
-### 1. Run the Example Script
+### 1. Using the CLI Tool
+```bash
+# Initialize a new collection
+simulchip collection init
+
+# Add packs to your collection
+simulchip collection add-pack sg core elev
+
+# Generate proxies for a deck
+simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+
+# Compare multiple decks
+simulchip proxy compare deck1.txt deck2.txt deck3.txt
+```
+
+### 2. Run the Example Script
 ```bash
 python example.py
 ```
 
 This will demonstrate all the main library features and create example files.
 
-### 2. Basic Library Usage
+### 3. Basic Library Usage
 
 ```python
 from pathlib import Path
@@ -85,6 +102,78 @@ if result.stats.missing_cards > 0:
     proxy_cards = comparer.get_proxy_cards(result)
     pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
 ```
+
+## Command-Line Interface
+
+The `simulchip` CLI provides a convenient way to manage your collection and generate proxy sheets without writing code.
+
+### Collection Management
+
+```bash
+# Initialize a new collection (creates ~/.simulchip/collection.toml)
+simulchip collection init
+
+# Add entire packs to your collection
+simulchip collection add-pack sg core elev ms
+
+# Remove packs from your collection
+simulchip collection remove-pack sg
+
+# Add individual cards
+simulchip collection add-card 30010 --quantity 3
+
+# Remove individual cards
+simulchip collection remove-card 30010 --quantity 1
+
+# Mark cards as missing/lost
+simulchip collection mark-missing 30010 --quantity 1
+
+# Show collection summary
+simulchip collection show
+
+# Use a custom collection file
+simulchip collection init --path ./my-collection.toml
+simulchip collection add-pack sg --path ./my-collection.toml
+```
+
+### Proxy Generation
+
+```bash
+# Generate proxies for a single deck
+simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+
+# Generate proxies using deck ID only
+simulchip proxy generate 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+
+# Compare multiple decks and generate reports
+simulchip proxy compare deck1.txt deck2.txt deck3.txt
+
+# Batch generate proxies for multiple decks
+simulchip proxy batch decklist-urls.txt
+
+# Custom output directory
+simulchip proxy generate DECK_ID --output-dir ./my-proxies
+
+# Use custom collection file
+simulchip proxy generate DECK_ID --collection ./my-collection.toml
+```
+
+### Proxy Output Structure
+
+By default, proxy PDFs are saved to `decks/` with the following structure:
+```
+decks/
+├── corporation/
+│   └── weyland-consortium/
+│       └── my-deck-name.pdf
+└── runner/
+    └── anarch/
+        └── my-runner-deck.pdf
+```
+
+### CLI Configuration
+
+The CLI uses `~/.simulchip/collection.toml` as the default collection file. You can override this with the `--collection` flag on most commands.
 
 ## Core Library Components
 

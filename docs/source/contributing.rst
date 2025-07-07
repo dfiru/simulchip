@@ -34,7 +34,7 @@ Code Style
 We use several tools to maintain code quality:
 
 * **Black** for code formatting (88 character line length)
-* **isort** for import organization  
+* **isort** for import organization
 * **flake8** for linting
 * **mypy** for type checking
 * **pylint** for additional code quality checks

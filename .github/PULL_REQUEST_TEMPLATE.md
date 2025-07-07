@@ -6,7 +6,7 @@
 ## 🔧 Type of Change
 <!-- Mark the relevant option with an "x" -->
 - [ ] 🐛 Bug fix
-- [ ] ✨ New feature  
+- [ ] ✨ New feature
 - [ ] 💥 Breaking change
 - [ ] 📚 Documentation update
 - [ ] 🎨 Code style/refactoring
