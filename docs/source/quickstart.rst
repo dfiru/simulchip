@@ -30,8 +30,11 @@ The quickest way to get started is with the CLI:
    # Initialize a new collection
    simulchip collect init
 
-   # Interactive collection management
-   simulchip collect manage
+   # Interactive pack management
+   simulchip collect packs
+
+   # Interactive card management
+   simulchip collect cards
 
    # Generate proxies for a deck
    simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
@@ -118,10 +121,14 @@ Collection Management Commands:
    # Initialize collection
    simulchip collect init
 
-   # Interactive management
-   simulchip collect manage
+   # Interactive pack management
    simulchip collect packs
+
+   # Interactive card management
    simulchip collect cards
+
+   # Show collection statistics
+   simulchip collect stats
 
    # Reset collection data
    simulchip collect reset

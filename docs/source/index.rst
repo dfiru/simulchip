@@ -28,14 +28,15 @@ Quick Example
 .. code-block:: bash
 
    # Initialize your collection
-   simulchip init
+   simulchip collect init
 
-   # Add cards to your collection
-   simulchip add-pack gateway
-   simulchip add-card "hedge-fund:3"
+   # Manage packs and cards interactively
+   simulchip collect packs
+   simulchip collect cards
 
    # Compare against a decklist and generate proxies
-   simulchip compare https://netrunnerdb.com/en/decklist/12345
+   simulchip proxy compare https://netrunnerdb.com/en/decklist/12345
+   simulchip proxy generate https://netrunnerdb.com/en/decklist/12345
 
 Indices and tables
 ==================

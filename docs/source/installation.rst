@@ -40,4 +40,4 @@ Verify Installation
 
 .. code-block:: bash
 
-   simulchip --version
+   simulchip version

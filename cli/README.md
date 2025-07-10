@@ -14,31 +14,30 @@ pip install -e .
 
 Initialize a new collection:
 ```bash
-simulchip collection init
+simulchip collect init
 ```
 
-Add cards to your collection:
+Manage packs interactively:
 ```bash
-# Add entire pack
-simulchip collection add-pack core
-simulchip collection add-pack sg
+# Interactive pack management with filtering and navigation
+simulchip collect packs
+```
 
-# Add individual cards
-simulchip collection add-card 01001 3
+Manage cards interactively:
+```bash
+# Interactive card management with filtering and navigation
+simulchip collect cards
 ```
 
 View collection statistics:
 ```bash
-simulchip collection stats
+simulchip collect stats
 ```
 
-List packs:
+Reset collection data:
 ```bash
-# List all packs
-simulchip collection list-packs
-
-# List only owned packs
-simulchip collection list-packs --owned
+# Reset and re-download pack/card information
+simulchip collect reset
 ```
 
 ### Proxy Generation
@@ -49,17 +48,22 @@ simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name
 ```
 
 The proxy PDF will be saved to:
-- Runner decks: `decks/runner/{decklist-id}/{deck-name}.pdf`
-- Corp decks: `decks/corporation/{decklist-id}/{deck-name}.pdf`
+- Runner decks: `decks/runner/{identity-slug}/{deck-name}.pdf`
+- Corp decks: `decks/corporation/{identity-slug}/{deck-name}.pdf`
 
 Compare a decklist against your collection:
 ```bash
-simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/deck-name --detailed
+simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/deck-name
 ```
 
 Generate proxies for all cards (not just missing):
 ```bash
 simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --all
+```
+
+Select alternate printings interactively:
+```bash
+simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --alternate-prints
 ```
 
 Process multiple decklists:
@@ -82,18 +86,34 @@ simulchip proxy batch decklists.txt
 ## Examples
 
 ```bash
-# Initialize collection and add some packs
-simulchip collection init
-simulchip collection add-pack core
-simulchip collection add-pack sg
-simulchip collection add-pack su21
+# Initialize collection
+simulchip collect init
+
+# Interactively manage packs
+simulchip collect packs
+
+# Interactively manage cards
+simulchip collect cards
 
 # Check what's missing from a deck
-simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/my-deck --detailed
+simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/my-deck
 
 # Generate proxies for missing cards
 simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck
 
+# Generate proxies with alternate printing selection
+simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --alternate-prints
+
 # Generate proxies for all cards in a deck (useful for testing)
 simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --all
 ```
+
+## Interactive Features
+
+The collection management commands (`collect packs` and `collect cards`) provide rich terminal interfaces with:
+
+- **Real-time filtering**: Type to search for packs or cards
+- **Keyboard navigation**: Arrow keys, Page Up/Down, Home/End
+- **Toggle operations**: Space to toggle pack ownership, +/- for card quantities
+- **Visual feedback**: Color coding and status indicators
+- **Dynamic viewport**: Automatically adjusts to terminal size

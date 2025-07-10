@@ -55,10 +55,13 @@ After installation, you'll have both the Python library and the `simulchip` comm
 ### 1. Initialize Your Collection
 ```bash
 # Initialize a new collection
-simulchip collect init # or start from scratch
+simulchip collect init
 
-# Interactively manage your collection
-simulchip collect manage
+# Interactively manage packs in your collection
+simulchip collect packs
+
+# Interactively manage individual cards
+simulchip collect cards
 ```
 
 ### 2. Generate Proxy Sheets
@@ -74,18 +77,19 @@ simulchip proxy batch decklist-urls.txt
 ```
 
 ### 3. Interactive Management
-```bash
-# Rich terminal interface for collection management
-simulchip collect manage
 
+The collection commands provide rich terminal interfaces with filtering, navigation, and real-time updates:
+
+```bash
 # Manage packs with filtering and search
 simulchip collect packs
 
-# Manage individual cards
+# Manage individual cards with detailed controls
 simulchip collect cards
-```
 
-These commands provide rich terminal interfaces with filtering, navigation, and real-time updates.
+# View collection statistics
+simulchip collect stats
+```
 
 ## Command-Line Interface
 
@@ -97,21 +101,21 @@ The `simulchip` CLI is the primary interface for managing your collection and ge
 # Initialize a new collection (creates ~/.simulchip/collection.toml)
 simulchip collect init
 
-# Interactive collection management - add/remove packs and cards
-simulchip collect manage
-
 # Interactive pack management with filtering and navigation
 simulchip collect packs
 
 # Interactive card management with filtering and navigation
 simulchip collect cards
 
+# Show collection statistics
+simulchip collect stats
+
 # Reset collection data and re-download pack/card information
 simulchip collect reset
 
 # Use a custom collection file
 simulchip collect init --collection ./my-collection.toml
-simulchip collect manage --collection ./my-collection.toml
+simulchip collect packs --collection ./my-collection.toml
 ```
 
 ### Proxy Generation
