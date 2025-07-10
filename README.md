@@ -12,24 +12,27 @@
 
 A Python library for comparing NetrunnerDB decklists against your local card collection and generating print-ready PDF proxy sheets for missing cards.
 
-I just started playing Netrunner about a month ago when I received a copy of System Gateway and Elevation. I love the game and I quickly realized that if I wanted to play in person, I'd have to play Standard. And if I wanted to play Standard, I would need to proxy quite a bit of cards.
+I just started playing Netrunner about a month ago when I purchased a copy of System Gateway and Elevation. I love the game and I quickly realized that if I wanted to play in paper, I'd probably have to play Standard. And if I wanted to play Standard, I would need to proxy quite a bit of cards.  Enter Simulchip: an easy way to manage your collection and proxy missing cards.
 
 This work is heavily inspired by some work I did for Marvel Champions to solve a similar problem. I've kept that work private over concerns about Marvel and FFG copyrights. However, with Null Signal Games supporting the game and proxies not only being legal but encouraged, I thought it was time to bring this all together here.
 
-The result is a clean, efficient Python library that does exactly what it says on the tin - no fuss, no bloat, just functional software that gets the job done. I hope you enjoy.
+The result is a clean, efficient Python library and CLI tool that does exactly what it says help you print the proxies that you need.
 
 ---
 
 ## Features
 
 - 🃏 **Smart Decklist Input**: Accept full NetrunnerDB URLs or deck IDs
-- 📦 **Pack-Based Collection**: Manage your collection by entire packs instead of individual cards
+- 📦 **Interactive Collection Management**: Rich terminal interface for managing packs and cards
 - 🎨 **High-Quality Proxies**: Generate PDFs with actual card images from NetrunnerDB
+- 🖼️ **Alternate Printing Selection**: Choose between different card printings interactively
 - 📐 **Perfect Dimensions**: Cards sized exactly to Netrunner specifications (63mm x 88mm)
 - ✂️ **Cut Guidelines**: Dashed lines show exactly where to cut for perfect cards
-- 💾 **Smart Caching**: Downloads card data and images once, reuses for speed
-- 🏷️ **Organized Output**: Files named by faction and deck for easy organization
-- 🐍 **Pure Python**: Simple library you can integrate into your own tools
+- 💾 **Smart Caching**: Downloads card data and images once, reuses for speed and to be as nice as possible to NRDB apis
+- 🏷️ **Identity-Based Organization**: Files organized by identity names for easy browsing
+- 🔍 **Advanced Filtering**: Search and filter collections with real-time updates
+- 📊 **Batch Processing**: Generate proxies for multiple decks at once
+- 🐍 **Pure Python**: Clean library architecture with CLI as a lightweight interface
 
 ## Installation
 
@@ -49,91 +52,66 @@ After installation, you'll have both the Python library and the `simulchip` comm
 
 ## Quick Start
 
-### 1. Using the CLI Tool
+### 1. Initialize Your Collection
 ```bash
 # Initialize a new collection
-simulchip collection init
+simulchip collect init # or start from scratch
 
-# Add packs to your collection
-simulchip collection add-pack sg core elev
+# Interactively manage your collection
+simulchip collect manage
+```
 
+### 2. Generate Proxy Sheets
+```bash
 # Generate proxies for a deck
 simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Compare multiple decks
-simulchip proxy compare deck1.txt deck2.txt deck3.txt
+# Compare a deck against your collection
+simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+
+# Batch generate proxies for multiple decks
+simulchip proxy batch decklist-urls.txt
 ```
 
-### 2. Run the Example Script
+### 3. Interactive Management
 ```bash
-python example.py
+# Rich terminal interface for collection management
+simulchip collect manage
+
+# Manage packs with filtering and search
+simulchip collect packs
+
+# Manage individual cards
+simulchip collect cards
 ```
 
-This will demonstrate all the main library features and create example files.
-
-### 3. Basic Library Usage
-
-```python
-from pathlib import Path
-from simulchip.api.netrunnerdb import NetrunnerDBAPI
-from simulchip.collection.manager import CollectionManager
-from simulchip.comparison import DecklistComparer
-from simulchip.pdf.generator import ProxyPDFGenerator
-
-# Initialize components
-api = NetrunnerDBAPI()
-collection_path = Path("my_collection.toml")
-collection = CollectionManager(collection_path, api)
-
-# Add packs to your collection
-collection.add_pack("sg")    # System Gateway
-collection.add_pack("core")  # Core Set
-collection.save_collection()
-
-# Compare a decklist
-comparer = DecklistComparer(api, collection)
-result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
-
-print(f"Missing {result.stats.missing_cards} cards from {result.decklist_name}")
-
-# Generate PDF for missing cards
-if result.stats.missing_cards > 0:
-    pdf_gen = ProxyPDFGenerator(api)
-    proxy_cards = comparer.get_proxy_cards(result)
-    pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
-```
+These commands provide rich terminal interfaces with filtering, navigation, and real-time updates.
 
 ## Command-Line Interface
 
-The `simulchip` CLI provides a convenient way to manage your collection and generate proxy sheets without writing code.
+The `simulchip` CLI is the primary interface for managing your collection and generating proxy sheets.
 
 ### Collection Management
 
 ```bash
 # Initialize a new collection (creates ~/.simulchip/collection.toml)
-simulchip collection init
+simulchip collect init
 
-# Add entire packs to your collection
-simulchip collection add-pack sg core elev ms
+# Interactive collection management - add/remove packs and cards
+simulchip collect manage
 
-# Remove packs from your collection
-simulchip collection remove-pack sg
+# Interactive pack management with filtering and navigation
+simulchip collect packs
 
-# Add individual cards
-simulchip collection add-card 30010 --quantity 3
+# Interactive card management with filtering and navigation
+simulchip collect cards
 
-# Remove individual cards
-simulchip collection remove-card 30010 --quantity 1
-
-# Mark cards as missing/lost
-simulchip collection mark-missing 30010 --quantity 1
-
-# Show collection summary
-simulchip collection show
+# Reset collection data and re-download pack/card information
+simulchip collect reset
 
 # Use a custom collection file
-simulchip collection init --path ./my-collection.toml
-simulchip collection add-pack sg --path ./my-collection.toml
+simulchip collect init --collection ./my-collection.toml
+simulchip collect manage --collection ./my-collection.toml
 ```
 
 ### Proxy Generation
@@ -145,14 +123,23 @@ simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-
 # Generate proxies using deck ID only
 simulchip proxy generate 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Compare multiple decks and generate reports
-simulchip proxy compare deck1.txt deck2.txt deck3.txt
+# Compare a deck against your collection
+simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 # Batch generate proxies for multiple decks
 simulchip proxy batch decklist-urls.txt
 
-# Custom output directory
-simulchip proxy generate DECK_ID --output-dir ./my-proxies
+# Generate proxies for all cards (not just missing ones)
+simulchip proxy generate DECK_ID --all
+
+# Skip downloading card images for faster generation
+simulchip proxy generate DECK_ID --no-images
+
+# Interactive alternate printing selection
+simulchip proxy generate DECK_ID --alternate-prints
+
+# Custom output path
+simulchip proxy generate DECK_ID --output ./my-proxies/deck.pdf
 
 # Use custom collection file
 simulchip proxy generate DECK_ID --collection ./my-collection.toml
@@ -160,122 +147,72 @@ simulchip proxy generate DECK_ID --collection ./my-collection.toml
 
 ### Proxy Output Structure
 
-By default, proxy PDFs are saved to `decks/` with the following structure:
+By default, proxy PDFs are saved to `decks/` with the following structure based on identity names:
 ```
 decks/
 ├── corporation/
-│   └── weyland-consortium/
+│   └── weyland-consortium-building-a-better-world/
 │       └── my-deck-name.pdf
 └── runner/
-    └── anarch/
+    └── zahya-sadeghi-versatile-smuggler/
         └── my-runner-deck.pdf
 ```
+
+This creates meaningful folder names based on the actual identity cards rather than NetrunnerDB UUIDs.
 
 ### CLI Configuration
 
 The CLI uses `~/.simulchip/collection.toml` as the default collection file. You can override this with the `--collection` flag on most commands.
 
-## Core Library Components
+#### Interactive Features
+- **Rich Terminal Interface**: Color-coded tables with dynamic viewport sizing
+- **Real-time Filtering**: Type to filter packs/cards with instant updates
+- **Keyboard Navigation**: Arrow keys, page up/down, vim-style shortcuts
+- **Batch Operations**: Toggle multiple packs/cards at once
+- **Platform Support**: Works on Windows, macOS, and Linux
 
-### NetrunnerDBAPI
-Handles all communication with the NetrunnerDB API.
+## Python Library
 
+Simulchip also provides a comprehensive Python library for building custom tools and integrations.
+
+### Quick Library Example
 ```python
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
-
-api = NetrunnerDBAPI()
-
-# Get all cards
-cards = api.get_all_cards()
-
-# Get all packs
-packs = api.get_all_packs()
-
-# Get specific pack
-pack = api.get_pack_by_code("sg")
-
-# Get specific card
-card = api.get_card_by_code("30010")
-
-# Get decklist
-decklist = api.get_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
-```
-
-### CollectionManager
-Manages your local card collection stored in TOML files.
-
-```python
-from simulchip.collection.manager import CollectionManager
+from simulchip.collection.operations import get_or_create_manager
+from simulchip.comparison import DecklistComparer
+from simulchip.pdf.generator import ProxyPDFGenerator
 from pathlib import Path
 
-collection = CollectionManager(Path("collection.toml"), api)
+# Initialize components
+api = NetrunnerDBAPI()
+collection = get_or_create_manager(Path("collection.toml"), api)
 
-# Add entire packs
-collection.add_pack("sg")
-collection.add_pack("core")
-
-# Add individual cards
-collection.add_card("30010", 3)  # 3 copies of Zahya
-
-# Mark cards as missing/lost
-collection.add_missing_card("30010", 1)  # Lost 1 copy
-
-# Remove cards
-collection.remove_card("30010", 1)
-
-# Get card counts
-count = collection.get_card_count("30010")  # Available copies
-
-# Save changes
-collection.save_collection()
-```
-
-### DecklistComparer
-Compares NetrunnerDB decklists against your collection.
-
-```python
-from simulchip.comparison import DecklistComparer
-
+# Compare a deck
 comparer = DecklistComparer(api, collection)
-
-# Compare by decklist ID
 result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
 
-# Access comparison results
-print(f"Deck: {result.decklist_name}")
-print(f"Identity: {result.identity_name}")
-print(f"Total cards: {result.stats.total_cards}")
-print(f"Owned: {result.stats.owned_cards}")
-print(f"Missing: {result.stats.missing_cards}")
-
-# Get formatted report
-report = comparer.format_comparison_report(result)
-print(report)
-
-# Get proxy cards for PDF generation
-proxy_cards = comparer.get_proxy_cards(result)
+# Generate proxies
+if result.stats.missing_cards > 0:
+    pdf_gen = ProxyPDFGenerator(api)
+    proxy_cards = comparer.get_proxy_cards_for_generation(result, all_cards=False)
+    pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
 ```
 
-### ProxyPDFGenerator
-Generates print-ready PDFs with card images.
+### Library Documentation
+For detailed library documentation, API reference, and advanced usage:
 
-```python
-from simulchip.pdf.generator import ProxyPDFGenerator
+📚 **[Full API Documentation](https://dfiru.github.io/simulchip/)**
 
-pdf_gen = ProxyPDFGenerator(api, page_size="letter")  # or "a4"
-
-# Generate PDF
-pdf_gen.generate_proxy_pdf(
-    proxy_cards,
-    Path("output.pdf"),
-    download_images=True,    # Include card images
-    group_by_pack=True      # Group cards by pack
-)
-```
+The library includes modules for:
+- **API Integration** (`simulchip.api`) - NetrunnerDB communication
+- **Collection Management** (`simulchip.collection`) - Local collection handling
+- **Deck Comparison** (`simulchip.comparison`) - Deck analysis and comparison
+- **PDF Generation** (`simulchip.pdf`) - Proxy sheet creation
+- **Utilities** (`simulchip.batch`, `simulchip.filters`, etc.) - Helper functions
 
 ## Collection File Format
 
-Your collection is stored in a simple TOML file:
+Your collection is stored in a simple TOML file with a new simplified structure:
 
 ```toml
 # Own entire packs (3 copies of each card)
@@ -286,69 +223,23 @@ packs = [
   "ms",     # Midnight Sun
 ]
 
-# Override specific cards (optional)
-[cards]
-"01016" = 2  # Only have 2x Account Siphon
-"22001" = 1  # Single promo card
-
-# Track missing/lost cards (optional)
-[missing]
-"34080" = 1  # Lost to Cupellation!
+# Card differences from pack defaults (optional)
+[card_diffs]
+"01016" = -1  # Missing 1 copy of Account Siphon (have 2 instead of 3)
+"22001" = 1   # Extra promo card (have 1 instead of 0)
+"34080" = -3  # Lost all copies to Cupellation!
 ```
 
-## Building Your Own Tools
+The new format uses card differences (deltas) instead of absolute quantities, making it easier to track changes from the standard 3-per-pack default.
 
-The library is designed to be flexible. Here are some ideas for custom tools you could build:
+## Architecture
 
-### Automatic Collection Sync
-```python
-# Sync your collection with a CSV export from another tool
-import csv
-from simulchip.collection.manager import CollectionManager
+Simulchip follows a clean separation between the library and CLI:
 
-def sync_from_csv(csv_path, collection_path):
-    collection = CollectionManager(collection_path, api)
+- **CLI** (`cli/`) - Lightweight terminal interface with interactive features
+- **Library** (`simulchip/`) - Core business logic and utilities
 
-    with open(csv_path) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            collection.add_card(row['card_code'], int(row['quantity']))
-
-    collection.save_collection()
-```
-
-### Batch Proxy Generation
-```python
-# Generate proxies for multiple decklists
-def generate_proxies_for_decklists(decklist_urls, collection_path):
-    collection = CollectionManager(collection_path, api)
-    comparer = DecklistComparer(api, collection)
-    pdf_gen = ProxyPDFGenerator(api)
-
-    for url in decklist_urls:
-        deck_id = extract_decklist_id(url)
-        result = comparer.compare_decklist(deck_id)
-
-        if result.stats.missing_cards > 0:
-            proxy_cards = comparer.get_proxy_cards(result)
-            output_path = Path(f"{result.identity_faction}_{result.decklist_name}.pdf")
-            pdf_gen.generate_proxy_pdf(proxy_cards, output_path)
-```
-
-### Custom Reports
-```python
-# Generate a collection completion report
-def collection_completion_report(collection_path):
-    collection = CollectionManager(collection_path, api)
-    all_packs = api.get_all_packs()
-
-    for pack in all_packs:
-        pack_cards = api.get_cards_by_pack(pack['code'])
-        owned_count = sum(1 for card in pack_cards
-                         if collection.get_card_count(card['code']) > 0)
-        completion = owned_count / len(pack_cards) * 100
-        print(f"{pack['name']}: {completion:.1f}% complete")
-```
+This design ensures the library can be used in any Python application while the CLI provides an excellent user experience for common tasks.
 
 ## Finding Pack and Card Codes
 
@@ -384,16 +275,20 @@ Examples: `01001` (Noise), `30010` (Zahya), `33004` (Steelskin Scarring)
 - **Smart Fallback**: Text placeholders for cards without images
 - **High Quality**: Vector graphics for clean printing
 
-## Dependencies
+## Development
 
+### Dependencies
 - `requests` - HTTP requests to NetrunnerDB API
 - `reportlab` - PDF generation
 - `Pillow` - Image processing
 - `toml` - TOML file support
+- `typer` - CLI framework
+- `rich` - Terminal UI
 
-## Documentation
-
-Full API documentation is available at [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
+### Documentation
+- **API Documentation**: [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
+- **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code of Conduct**: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ## Contributing
 

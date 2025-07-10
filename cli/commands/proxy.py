@@ -11,10 +11,21 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 # First-party imports
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
+from simulchip.batch import process_decklist_batch
+from simulchip.cli_utils import (
+    ensure_output_directory,
+    get_proxy_generation_message,
+    resolve_collection_path,
+    should_generate_proxies,
+    validate_collection_exists,
+)
 from simulchip.collection.manager import CollectionManager
+from simulchip.collection.operations import get_or_create_manager
 from simulchip.comparison import DecklistComparer
+from simulchip.display import get_completion_color
+from simulchip.paths import generate_default_output_path
 from simulchip.pdf.generator import ProxyPDFGenerator
-from simulchip.utils import extract_decklist_id, get_faction_side, sanitize_filename
+from simulchip.utils import extract_decklist_id
 
 # Initialize console for rich output
 console = Console()
@@ -22,9 +33,6 @@ console = Console()
 # Create the proxy command group
 app = typer.Typer(help="Generate proxy sheets for decklists")
 
-# Default paths
-DEFAULT_COLLECTION = Path.home() / ".simulchip" / "collection.toml"
-DEFAULT_DECKS_DIR = Path.cwd() / "decks"
 
 # Default options for typer to avoid B008 flake8 warnings
 OUTPUT_OPTION = typer.Option(None, "--output", "-o", help="Custom output path for PDF")
@@ -46,18 +54,9 @@ DETAILED_OPTION = typer.Option(
 LIMIT_OPTION = typer.Option(
     None, "--limit", "-l", help="Limit number of URLs to process"
 )
-
-
-def get_deck_path(decklist_id: str, deck_name: str, side: str) -> Path:
-    """Generate the standard deck path."""
-    # Sanitize the deck name for filesystem
-    safe_name = sanitize_filename(deck_name.lower().replace(" ", "-"))
-
-    # Determine side directory
-    side_dir = "corporation" if side.lower() in ["corp", "corporation"] else "runner"
-
-    # Create path: decks/(corporation|runner)/(id)/(deck-name).pdf
-    return DEFAULT_DECKS_DIR / side_dir / decklist_id / f"{safe_name}.pdf"
+ALTERNATE_PRINTS_OPTION = typer.Option(
+    False, "--alternate-prints", help="Interactively select alternate printings"
+)
 
 
 @app.command()
@@ -68,6 +67,7 @@ def generate(
     all_cards: bool = ALL_CARDS_OPTION,
     no_images: bool = NO_IMAGES_OPTION,
     page_size: str = PAGE_SIZE_OPTION,
+    alternate_prints: bool = ALTERNATE_PRINTS_OPTION,
 ) -> Any:
     """Generate proxy sheets for a decklist."""
     # Extract decklist ID
@@ -79,15 +79,10 @@ def generate(
     # Initialize API and collection
     api = NetrunnerDBAPI()
 
-    if collection_file is None:
-        collection_file = DEFAULT_COLLECTION
+    collection_file = resolve_collection_path(collection_file)
 
-    # Create collection manager
-    if collection_file.exists() and not all_cards:
-        manager = CollectionManager(collection_file=collection_file, api=api)
-    else:
-        # Empty collection if generating all cards or no collection exists
-        manager = CollectionManager(api=api)
+    # Create collection manager using library function
+    manager = get_or_create_manager(collection_file, api, all_cards)
 
     # Create comparer
     comparer = DecklistComparer(api, manager)
@@ -105,30 +100,23 @@ def generate(
             console.print(f"[red]✗ Error fetching decklist: {e}[/red]")
             raise typer.Exit(1)
 
-        # Determine output path
+        # Determine output path using library function
         if output is None:
-            # Determine if corp or runner based on identity
-            identity_faction = result.identity.faction_code
-            side = get_faction_side(identity_faction)
-            output = get_deck_path(decklist_id, result.decklist_name, side)
+            output = generate_default_output_path(result)
 
         # Create output directory
-        output.parent.mkdir(parents=True, exist_ok=True)
+        ensure_output_directory(output)
 
-        # Get cards to proxy
-        if all_cards:
-            proxy_cards = result.all_cards
-            console.print(
-                f"[blue]Generating proxies for all {len(proxy_cards)} cards[/blue]"
-            )
-        else:
-            proxy_cards = comparer.get_proxy_cards(result)
-            if not proxy_cards:
-                console.print("[green]✓ You have all cards for this deck![/green]")
-                return
-            console.print(
-                f"[yellow]Generating proxies for {len(proxy_cards)} missing cards[/yellow]"
-            )
+        # Get cards to proxy using library function
+        proxy_cards = comparer.get_proxy_cards_for_generation(result, all_cards)
+
+        if not should_generate_proxies(proxy_cards):
+            console.print("[green]✓ You have all cards for this deck![/green]")
+            return
+
+        message = get_proxy_generation_message(proxy_cards, all_cards)
+        color = "blue" if all_cards else "yellow"
+        console.print(f"[{color}]{message}[/{color}]")
 
         # Generate PDF
         progress.add_task(description="Generating PDF...", total=None)
@@ -140,6 +128,7 @@ def generate(
                 output,
                 download_images=not no_images,
                 group_by_pack=True,
+                interactive_printing_selection=alternate_prints,
             )
         except Exception as e:
             console.print(f"[red]✗ Error generating PDF: {e}[/red]")
@@ -171,10 +160,9 @@ def compare(
     # Initialize API and collection
     api = NetrunnerDBAPI()
 
-    if collection_file is None:
-        collection_file = DEFAULT_COLLECTION
+    collection_file = resolve_collection_path(collection_file)
 
-    if not collection_file.exists():
+    if not validate_collection_exists(collection_file):
         console.print(f"[red]✗ Collection not found at {collection_file}[/red]")
         console.print(
             "[yellow]Initialize a collection with: simulchip collection init[/yellow]"
@@ -197,15 +185,9 @@ def compare(
     console.print(f"Identity: [yellow]{result.identity.title}[/yellow]")
     console.print(f"URL: [dim]{decklist_url}[/dim]\n")
 
-    # Stats
+    # Stats using library function for color
     completion_pct = result.stats.completion_percentage
-    color = (
-        "green"
-        if completion_pct == 100
-        else "yellow"
-        if completion_pct >= 80
-        else "red"
-    )
+    color = get_completion_color(completion_pct)
 
     console.print(f"Completion: [{color}]{completion_pct:.1f}%[/{color}]")
     console.print(f"Total cards: {result.stats.total_cards}")
@@ -224,52 +206,49 @@ def batch(
     collection_file: Optional[Path] = COLLECTION_OPTION,
     no_images: bool = NO_IMAGES_OPTION,
     page_size: str = PAGE_SIZE_OPTION,
+    alternate_prints: bool = ALTERNATE_PRINTS_OPTION,
 ) -> Any:
     """Generate proxy sheets for multiple decklists from a file."""
-    if not decklist_file.exists():
+
+    def generate_proxy(url: str) -> None:
+        """Generate proxy for a single URL."""
+        generate(
+            decklist_url=url,
+            collection_file=collection_file,
+            no_images=no_images,
+            page_size=page_size,
+            output=None,
+            all_cards=False,
+            alternate_prints=alternate_prints,
+        )
+
+    def progress_callback(current: int, total: int, url: str) -> None:
+        """Progress callback for batch processing."""
+        console.print(f"[dim]Processing {current}/{total}:[/dim] {url}")
+
+    def error_callback(url: str, error: Exception) -> None:
+        """Error callback for batch processing."""
+        console.print(f"[red]✗ Error processing {url}: {error}[/red]\n")
+
+    try:
+        # Process batch using library function
+        result = process_decklist_batch(
+            decklist_file=decklist_file,
+            generate_func=generate_proxy,
+            progress_callback=progress_callback,
+            error_callback=error_callback,
+        )
+
+        console.print(f"[blue]Found {result.total_count} decklists to process[/blue]\n")
+
+        # Show summary
+        console.print("\n[bold]Batch complete![/bold]")
+        console.print(f"Success: [green]{result.success_count}[/green]")
+        console.print(f"Failed: [red]{result.failed_count}[/red]")
+
+    except FileNotFoundError:
         console.print(f"[red]✗ File not found: {decklist_file}[/red]")
         raise typer.Exit(1)
-
-    # Read URLs from file
-    urls = []
-    with open(decklist_file) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):  # Skip empty lines and comments
-                urls.append(line)
-
-    if not urls:
-        console.print(f"[red]✗ No URLs found in {decklist_file}[/red]")
+    except ValueError as e:
+        console.print(f"[red]✗ {e}[/red]")
         raise typer.Exit(1)
-
-    console.print(f"[blue]Found {len(urls)} decklists to process[/blue]\n")
-
-    # Process each URL
-    success = 0
-    failed = 0
-
-    for i, url in enumerate(urls, 1):
-        console.print(f"[dim]Processing {i}/{len(urls)}:[/dim] {url}")
-
-        try:
-            # Use the generate command logic
-            generate(
-                decklist_url=url,
-                collection_file=collection_file,
-                no_images=no_images,
-                page_size=page_size,
-                output=None,
-                all_cards=False,
-            )
-            success += 1
-        except typer.Exit:
-            failed += 1
-            console.print("[red]✗ Failed[/red]\n")
-        except Exception as e:
-            failed += 1
-            console.print(f"[red]✗ Error: {e}[/red]\n")
-
-    # Summary
-    console.print("\n[bold]Batch complete![/bold]")
-    console.print(f"Success: [green]{success}[/green]")
-    console.print(f"Failed: [red]{failed}[/red]")

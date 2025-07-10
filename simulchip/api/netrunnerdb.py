@@ -16,6 +16,7 @@ TypeDict Classes:
 from __future__ import annotations
 
 # Standard library imports
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,14 @@ import requests
 from requests.exceptions import RequestException
 
 from ..cache import CacheManager
+
+
+def _should_show_cache_messages() -> bool:
+    """Check if cache messages should be displayed.
+
+    Returns False during tests to avoid cluttering output.
+    """
+    return os.environ.get("PYTEST_CURRENT_TEST") is None
 
 
 class CardData(TypedDict, total=False):
@@ -152,6 +161,7 @@ class NetrunnerDBAPI:
         self._packs_cache: Optional[List[PackData]] = None
         self._cycles_cache: Optional[Dict[str, str]] = None
         self.cache = CacheManager(cache_dir)
+        self._offline_mode = False
 
     def _rate_limit(self) -> None:
         """Apply rate limiting between requests."""
@@ -177,6 +187,10 @@ class NetrunnerDBAPI:
         """
         if not endpoint:
             raise APIError("Endpoint cannot be empty")
+
+        # In offline mode, don't make any network requests
+        if self._offline_mode:
+            raise APIError("Offline mode enabled - no network requests allowed")
 
         self._rate_limit()
         url = f"{self.BASE_URL}/{endpoint}"
@@ -206,7 +220,9 @@ class NetrunnerDBAPI:
             raise APIError(f"Invalid JSON response: {str(e)}", url=url) from e
 
     def get_all_cards(self) -> Dict[str, CardData]:
-        """Fetch all cards from NetrunnerDB with caching.
+        """Fetch all cards from NetrunnerDB with smart caching.
+
+        Uses smart cache validation based on pack releases to minimize API calls.
 
         Returns:
             Dictionary mapping card codes to card data
@@ -217,13 +233,27 @@ class NetrunnerDBAPI:
         if self._cards_cache is not None:
             return self._cards_cache
 
-        # Try cache first
+        # Try cache first with smart validation
         cached_data = self.cache.get_cached_cards()
         if cached_data:
-            self._cards_cache = cached_data
-            return self._cards_cache
+            # Check if cache is still valid
+            validity_result = self.check_cache_validity_with_reason()
+            if validity_result["valid"]:
+                if _should_show_cache_messages():
+                    print(
+                        f"💾 Using cached card data (cache is fresh, last updated: {validity_result['last_updated']})"
+                    )
+                self._cards_cache = cached_data
+                return self._cards_cache
+            else:
+                # Cache is invalid, clear it
+                if _should_show_cache_messages():
+                    print(f"🔄 Cache invalidated: {validity_result['reason']}")
+                self.cache.clear_cache()
 
         # Fetch from API
+        if _should_show_cache_messages():
+            print("🌐 Fetching fresh card data from NetrunnerDB...")
         try:
             response = self._make_request("cards")
 
@@ -251,6 +281,13 @@ class NetrunnerDBAPI:
             self._cards_cache = cards
             self.cache.cache_cards(cards)
 
+            # Fetch packs to update cache metadata (skip cache check to avoid recursion)
+            packs = self.get_all_packs(skip_cache_check=True)
+            self.cache.mark_cache_fresh(packs)
+
+            if _should_show_cache_messages():
+                print(f"✅ Cached {len(cards)} cards for future use")
+
             return cards
 
         except APIError:
@@ -258,8 +295,11 @@ class NetrunnerDBAPI:
         except Exception as e:
             raise APIError(f"Failed to process cards data: {str(e)}") from e
 
-    def get_all_packs(self) -> List[PackData]:
-        """Fetch all pack information with caching.
+    def get_all_packs(self, skip_cache_check: bool = False) -> List[PackData]:
+        """Fetch all pack information with smart caching.
+
+        Args:
+            skip_cache_check: Skip cache validity check (used internally to avoid recursion)
 
         Returns:
             List of pack data
@@ -270,13 +310,30 @@ class NetrunnerDBAPI:
         if self._packs_cache is not None:
             return self._packs_cache
 
-        # Try cache first
+        # Try cache first (but don't check validity if we're called from get_all_cards)
         cached_data = self.cache.get_cached_packs()
         if cached_data:
-            self._packs_cache = cached_data  # type: ignore[assignment]
-            return cached_data  # type: ignore[return-value]
+            if skip_cache_check:
+                # Skip validation when called from get_all_cards
+                self._packs_cache = cached_data  # type: ignore[assignment]
+                return cached_data  # type: ignore[return-value]
+            else:
+                validity_result = self.check_cache_validity_with_reason()
+                if validity_result["valid"]:
+                    if _should_show_cache_messages():
+                        print(
+                            f"💾 Using cached pack data (cache is fresh, last updated: {validity_result['last_updated']})"
+                        )
+                    self._packs_cache = cached_data  # type: ignore[assignment]
+                    return cached_data  # type: ignore[return-value]
+                else:
+                    if _should_show_cache_messages():
+                        print(f"🔄 Cache invalidated: {validity_result['reason']}")
+                    self.cache.clear_cache()
 
         # Fetch from API
+        if not skip_cache_check and _should_show_cache_messages():
+            print("🌐 Fetching fresh pack data from NetrunnerDB...")
         try:
             response = self._make_request("packs")
 
@@ -292,12 +349,175 @@ class NetrunnerDBAPI:
             self._packs_cache = packs
             self.cache.cache_packs(response["data"])
 
+            # Update cache metadata when fetching packs directly
+            if not skip_cache_check:
+                self.cache.mark_cache_fresh(packs)
+                if _should_show_cache_messages():
+                    print(f"✅ Cached {len(packs)} packs for future use")
+
             return packs
 
         except APIError:
             raise
         except Exception as e:
             raise APIError(f"Failed to process packs data: {str(e)}") from e
+
+    def check_cache_validity(self) -> bool:
+        """Check if cache needs refresh by fetching pack data only.
+
+        This is a lightweight check that only fetches pack information
+        to determine if there are new releases since the cache was last updated.
+
+        Returns:
+            True if cache is valid, False if it needs refresh
+        """
+        # In offline mode, always consider cache valid
+        if self._offline_mode:
+            return True
+
+        try:
+            # Fetch current pack data (lightweight API call)
+            response = self._make_request("packs")
+
+            if "data" not in response or not isinstance(response["data"], list):
+                return False
+
+            current_packs = response["data"]
+
+            # Check if cache is valid based on pack releases
+            return self.cache.is_cache_valid(current_packs)
+
+        except Exception:
+            # If we can't check, assume cache is valid for offline mode
+            return True
+
+    def check_cache_validity_with_reason(self) -> Dict[str, Any]:
+        """Check if cache needs refresh and provide detailed reason.
+
+        Returns:
+            Dictionary with 'valid' boolean, 'reason' string, and metadata
+        """
+        # Standard library imports
+        import datetime
+
+        # Get cache metadata
+        metadata = self.cache.get_cache_metadata()
+
+        # Format last updated time
+        last_updated = "never"
+        if metadata.get("timestamp"):
+            timestamp = datetime.datetime.fromtimestamp(metadata["timestamp"])
+            last_updated = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check various invalidation conditions
+        if not metadata:
+            return {
+                "valid": False,
+                "reason": "📭 No cache metadata found",
+                "last_updated": last_updated,
+            }
+
+        if (
+            not self.cache.cards_cache_file.exists()
+            or not self.cache.packs_cache_file.exists()
+        ):
+            return {
+                "valid": False,
+                "reason": "📂 Cache files missing",
+                "last_updated": last_updated,
+            }
+
+        # In offline mode, always valid
+        if self._offline_mode:
+            return {
+                "valid": True,
+                "reason": "Offline mode - using cached data",
+                "last_updated": last_updated,
+            }
+
+        try:
+            # Fetch current pack data (lightweight API call)
+            if _should_show_cache_messages():
+                print("🔍 Checking for new pack releases...")
+            response = self._make_request("packs")
+
+            if "data" not in response or not isinstance(response["data"], list):
+                return {
+                    "valid": False,
+                    "reason": "Invalid pack data from API",
+                    "last_updated": last_updated,
+                }
+
+            current_packs = response["data"]
+            latest_pack_date = self.cache.get_latest_pack_date(current_packs)
+            cached_latest_date = metadata.get("latest_pack_date")
+
+            # Check for new packs
+            if latest_pack_date and cached_latest_date:
+                if latest_pack_date > cached_latest_date:
+                    # Find the new pack
+                    new_pack = None
+                    for pack in current_packs:
+                        if pack.get("date_release") == latest_pack_date:
+                            new_pack = pack
+                            break
+
+                    pack_name = (
+                        new_pack.get("name", "Unknown") if new_pack else "Unknown"
+                    )
+                    return {
+                        "valid": False,
+                        "reason": f"🎉 New pack released: {pack_name} ({latest_pack_date})",
+                        "last_updated": last_updated,
+                    }
+
+            # Check cache age
+            cache_timestamp = metadata.get("timestamp", 0)
+            age_hours = (time.time() - cache_timestamp) / 3600
+
+            if age_hours > 168:  # 7 days
+                return {
+                    "valid": False,
+                    "reason": f"⏰ Cache too old ({int(age_hours / 24)} days)",
+                    "last_updated": last_updated,
+                }
+
+            # Cache is valid
+            return {
+                "valid": True,
+                "reason": "Cache is up to date",
+                "last_updated": last_updated,
+                "age_hours": int(age_hours),
+            }
+
+        except Exception:
+            # If we can't check, assume cache is valid
+            if _should_show_cache_messages():
+                print("⚠️  Cannot reach NetrunnerDB API, using cached data")
+            return {
+                "valid": True,
+                "reason": "API unreachable, using cached data",
+                "last_updated": last_updated,
+            }
+
+    def set_offline_mode(self, offline: bool = True) -> None:
+        """Enable or disable offline mode.
+
+        In offline mode, the API will only use cached data and won't make
+        any network requests.
+
+        Args:
+            offline: True to enable offline mode, False to disable
+        """
+        self._offline_mode = offline
+
+    def is_offline_mode(self) -> bool:
+        """Check if offline mode is enabled.
+
+        Returns:
+            True if offline mode is enabled
+        """
+        return self._offline_mode
 
     def get_packs_by_release_date(self, newest_first: bool = True) -> List[PackData]:
         """Get all packs sorted by release date with enriched cycle names.
@@ -336,6 +556,45 @@ class NetrunnerDBAPI:
             valid_packs.sort(key=lambda x: x[0] if x[0] else "9999", reverse=False)
 
         return [pack for _, pack in valid_packs]
+
+    def get_card_by_code(self, code: str) -> Optional[CardData]:
+        """Get a specific card by its code.
+
+        Args:
+            code: Card code
+
+        Returns:
+            Card data or None if not found
+        """
+        cards = self.get_all_cards()
+        return cards.get(code)
+
+    def get_all_printings(self, card_title: str) -> List[CardData]:
+        """Get all printings of a card by its title.
+
+        Args:
+            card_title: The card title to search for
+
+        Returns:
+            List of all printings of the card, sorted by release date (newest first)
+        """
+        cards = self.get_all_cards()
+        packs = {pack["code"]: pack for pack in self.get_all_packs()}
+
+        # Find all cards with matching title
+        printings = []
+        for card in cards.values():
+            if card.get("title", "").lower() == card_title.lower():
+                printings.append(card)
+
+        # Sort by pack release date (newest first)
+        def get_release_date(card: CardData) -> str:
+            pack_code = card.get("pack_code", "")
+            pack = packs.get(pack_code, {})  # type: ignore
+            return pack.get("date_release", "") or ""
+
+        printings.sort(key=get_release_date, reverse=True)
+        return printings
 
     def get_cycle_name_mapping(self) -> Dict[str, str]:
         """Fetch cycle code to name mapping with caching.
@@ -412,27 +671,6 @@ class NetrunnerDBAPI:
             raise
         except Exception as e:
             raise APIError(f"Failed to fetch decklist {decklist_id}: {str(e)}") from e
-
-    def get_card_by_code(self, card_code: str) -> Optional[CardData]:
-        """Get a specific card by its code with validation.
-
-        Args:
-            card_code: Card code (e.g., "01001")
-
-        Returns:
-            Card data or None if not found
-
-        Raises:
-            ValueError: If card_code is invalid format
-        """
-        if not card_code:
-            raise ValueError("Card code cannot be empty")
-
-        if not card_code.isdigit() or len(card_code) != 5:
-            raise ValueError(f"Card code must be 5 digits, got: {card_code}")
-
-        cards = self.get_all_cards()
-        return cards.get(card_code)
 
     def get_pack_by_code(self, pack_code: str) -> Optional[PackData]:
         """Get a specific pack by its code using functional approach.

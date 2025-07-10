@@ -27,7 +27,7 @@ app = typer.Typer(
 )
 
 # Add command groups
-app.add_typer(collection.app, name="collection", help="Manage your card collection")
+app.add_typer(collection.app, name="collect", help="Manage your card collection")
 app.add_typer(proxy.app, name="proxy", help="Generate proxy sheets for decklists")
 
 

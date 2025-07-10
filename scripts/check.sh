@@ -3,30 +3,14 @@
 
 set -e
 
-echo "🔍 Running code quality checks..."
+echo "🔍 Running code quality checks via pre-commit..."
 echo
 
-echo "📐 Checking formatting with black..."
-black --check simulchip cli tests example.py || (echo "❌ Black check failed. Run 'black simulchip cli tests example.py' to fix." && exit 1)
-echo "✅ Black check passed"
-echo
+# Run all pre-commit hooks
+pre-commit run --all-files || (echo "❌ Pre-commit checks failed" && exit 1)
 
-echo "📦 Checking imports with isort..."
-isort --check-only --profile black simulchip cli tests example.py || (echo "❌ isort check failed. Run 'isort --profile black simulchip cli tests example.py' to fix." && exit 1)
-echo "✅ isort check passed"
 echo
-
-echo "🔎 Running flake8..."
-flake8 simulchip cli tests example.py || (echo "❌ Flake8 check failed" && exit 1)
-echo "✅ Flake8 check passed"
-echo
-
-echo "🏷️ Running mypy type checks..."
-mypy simulchip cli tests example.py || (echo "❌ mypy check failed" && exit 1)
-echo "✅ mypy check passed"
-echo
-
-echo "📊 Running pylint..."
+echo "📊 Running pylint (not included in pre-commit)..."
 pylint simulchip cli example.py
 echo
 

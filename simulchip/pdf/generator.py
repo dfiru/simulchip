@@ -10,7 +10,7 @@ Classes:
 
 # Standard library imports
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 # Third-party imports
 from PIL import Image
@@ -101,6 +101,155 @@ class ProxyPDFGenerator:
 
         # Fallback to constructed URL (v2 API)
         return f"https://card-images.netrunnerdb.com/v2/large/{card_code}.jpg"
+
+    def _select_printing_interactive(
+        self, card_title: str, printings: List[Any]
+    ) -> str:
+        """Use interactive table to select a printing.
+
+        Args:
+            card_title: Title of the card
+            printings: List of available printings
+
+        Returns:
+            Selected card code
+        """
+        # Standard library imports
+        import sys
+        import termios
+        import tty
+
+        # Third-party imports
+        from rich import box
+        from rich.console import Console
+        from rich.live import Live
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.text import Text
+
+        console = Console()
+
+        # Get pack names for display
+        packs = {pack["code"]: pack for pack in self.api.get_all_packs()}
+
+        selected_idx = 0
+
+        def _getch() -> str:
+            """Get a single character from stdin."""
+            if sys.platform == "win32":
+                # Standard library imports
+                import msvcrt
+
+                return msvcrt.getch().decode("utf-8")
+            else:
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
+                try:
+                    tty.setraw(sys.stdin.fileno())
+                    char = sys.stdin.read(1)
+                finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                return char
+
+        with Live(console=console, auto_refresh=False) as live:
+            while True:
+                # Create table
+                table = Table(
+                    title=f"Select printing for: {card_title}",
+                    show_header=True,
+                    header_style="bold cyan",
+                    box=box.ROUNDED,
+                )
+                table.add_column("", width=3, justify="center")
+                table.add_column("Pack", style="yellow")
+                table.add_column("Code", style="dim", width=10)
+                table.add_column("Release Date", style="cyan", width=12)
+
+                # Add rows
+                for i, printing in enumerate(printings):
+                    pack_code = printing.get("pack_code", "")
+                    pack = packs.get(pack_code, {})  # type: ignore
+                    pack_name = pack.get("name", "Unknown Pack")
+                    release_date = pack.get("date_release", "Unknown")
+
+                    # Selection indicator
+                    if i == selected_idx:
+                        mark = "►"
+                        style = "reverse"
+                    else:
+                        mark = " "
+                        style = None
+
+                    table.add_row(
+                        mark, pack_name, printing["code"], release_date, style=style
+                    )
+
+                # Instructions
+                instructions = Text()
+                instructions.append("↑/↓", style="cyan")
+                instructions.append(" navigate, ", style="dim")
+                instructions.append("Enter", style="cyan")
+                instructions.append(" select, ", style="dim")
+                instructions.append("q/Esc", style="cyan")
+                instructions.append(" use newest (default)", style="dim")
+
+                # Display
+                # Third-party imports
+                from rich.console import Group
+
+                display_group = Group(table, Text(""), instructions)  # Blank line
+
+                panel = Panel(
+                    display_group,
+                    title="[bold]Alternate Printing Selection[/bold]",
+                    subtitle=f"[dim]{len(printings)} printings available[/dim]",
+                    border_style="blue",
+                )
+
+                live.update(panel)
+                live.refresh()
+
+                # Handle input
+                char = _getch()
+
+                if char == "\x1b":  # ESC sequence
+                    next_char = _getch()
+                    if next_char == "[":
+                        arrow_char = _getch()
+                        if arrow_char == "A" and selected_idx > 0:  # Up
+                            selected_idx -= 1
+                        elif (
+                            arrow_char == "B" and selected_idx < len(printings) - 1
+                        ):  # Down
+                            selected_idx += 1
+                    else:
+                        # Just ESC - use default (newest)
+                        return str(printings[0]["code"])
+                elif char == "\r" or char == "\n":  # Enter
+                    return str(printings[selected_idx]["code"])
+                elif char == "q" or char == "\x03":  # q or Ctrl+C
+                    return str(printings[0]["code"])
+                elif char == "k" and selected_idx > 0:  # Vim-style up
+                    selected_idx -= 1
+                elif (
+                    char == "j" and selected_idx < len(printings) - 1
+                ):  # Vim-style down
+                    selected_idx += 1
+
+    def _get_pack_name(self, pack_code: str) -> str:
+        """Get pack name from pack code.
+
+        Args:
+            pack_code: Pack code
+
+        Returns:
+            Pack name or pack code if not found
+        """
+        packs = self.api.get_all_packs()
+        for pack in packs:
+            if pack.get("code") == pack_code:
+                return pack.get("name", pack_code)
+        return pack_code
 
     def _download_card_image(self, card_code: str) -> Optional[Image.Image]:
         """Download card image using cache.
@@ -249,6 +398,7 @@ class ProxyPDFGenerator:
         output_path: Path,
         download_images: bool = True,
         group_by_pack: bool = False,
+        interactive_printing_selection: bool = False,
     ) -> None:
         """Generate PDF with proxy cards.
 
@@ -257,11 +407,67 @@ class ProxyPDFGenerator:
             output_path: Output PDF file path
             download_images: Whether to download card images
             group_by_pack: Whether to group cards by pack
+            interactive_printing_selection: Whether to prompt for alternate printings
         """
         # Prepare card list (with duplicates for multiple copies)
         proxy_list = []
+
+        # Handle alternate printing selection if requested
+        printing_selections = {}  # Map from original code to selected code
+
+        if interactive_printing_selection:
+            # Third-party imports
+            from rich.console import Console
+
+            console = Console()
+
+            console.print("\n[cyan]Checking for alternate printings...[/cyan]")
+
+            # Check if we're in an interactive terminal
+            # Standard library imports
+            import sys
+
+            if not sys.stdin.isatty():
+                console.print(
+                    "[yellow]Interactive printing selection requires a terminal[/yellow]"
+                )
+                console.print("[dim]Using newest printing for all cards[/dim]")
+            else:
+                for card in cards:
+                    printings = self.api.get_all_printings(card.title)
+                    if len(printings) > 1:
+                        # Use interactive table to select printing
+                        selected_code = self._select_printing_interactive(
+                            card.title, printings
+                        )
+                        printing_selections[card.code] = selected_code
+
+                        # Show confirmation
+                        selected_printing = next(
+                            p for p in printings if p["code"] == selected_code
+                        )
+                        pack_name = self._get_pack_name(
+                            selected_printing.get("pack_code", "")
+                        )
+                        console.print(
+                            f"[green]✓[/green] {card.title}: Selected [yellow]{pack_name}[/yellow] version"
+                        )
+
+        # Build proxy list with selected printings
         for card in cards:
-            proxy_list.extend([card] * card.missing_count)
+            # Use selected printing code if available, otherwise use original
+            card_code = printing_selections.get(card.code, card.code)
+
+            # Create modified CardInfo with selected printing code
+            if card_code != card.code:
+                # Create new CardInfo with updated code
+                # Standard library imports
+                from dataclasses import replace
+
+                modified_card = replace(card, code=card_code)
+                proxy_list.extend([modified_card] * card.missing_count)
+            else:
+                proxy_list.extend([card] * card.missing_count)
 
         # Sort if grouping by pack
         if group_by_pack:

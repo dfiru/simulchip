@@ -20,16 +20,21 @@ Or install as a dependency:
 
    pip install git+https://github.com/dfiru/simulchip.git
 
-Running the Example
--------------------
+Using the CLI
+--------------
 
-The quickest way to see Simulchip in action is to run the example script:
+The quickest way to get started is with the CLI:
 
 .. code-block:: bash
 
-   python example.py
+   # Initialize a new collection
+   simulchip collect init
 
-This will demonstrate all the main library features and create example files.
+   # Interactive collection management
+   simulchip collect manage
+
+   # Generate proxies for a deck
+   simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 Basic Library Usage
 -------------------
@@ -41,14 +46,14 @@ Initialize Components
 
    from pathlib import Path
    from simulchip.api.netrunnerdb import NetrunnerDBAPI
-   from simulchip.collection.manager import CollectionManager
+   from simulchip.collection.operations import get_or_create_manager
    from simulchip.comparison import DecklistComparer
    from simulchip.pdf.generator import ProxyPDFGenerator
 
    # Initialize API and collection
    api = NetrunnerDBAPI()
    collection_path = Path("my_collection.toml")
-   collection = CollectionManager(collection_path, api)
+   collection = get_or_create_manager(collection_path, api, all_cards=False)
 
 Managing Your Collection
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,11 +66,12 @@ Add entire packs to your collection:
    collection.add_pack("sg")    # System Gateway
    collection.add_pack("core")  # Core Set
 
-   # Add individual cards
-   collection.add_card("30010", 3)  # 3 copies of Zahya
+   # Modify individual card quantities
+   collection.modify_card_quantity("30010", 1)   # Add 1 copy
+   collection.modify_card_quantity("30010", -1)  # Remove 1 copy
 
-   # Mark cards as missing
-   collection.add_missing_card("30010", 1)  # Lost 1 copy
+   # Set absolute quantities
+   collection.set_card_quantity("30010", 2)  # Set to exactly 2 copies
 
    # Save changes
    collection.save_collection()
@@ -81,6 +87,8 @@ Compare a NetrunnerDB decklist against your collection:
    result = comparer.compare_decklist("7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c")
 
    print(f"Missing {result.stats.missing_cards} cards from {result.decklist_name}")
+   print(f"Identity: {result.identity.title}")
+   print(f"Completion: {result.stats.completion_percentage:.1f}%")
 
 Generating PDF Proxies
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -91,18 +99,85 @@ Generate proxy PDFs for missing cards:
 
    if result.stats.missing_cards > 0:
        pdf_gen = ProxyPDFGenerator(api)
-       proxy_cards = comparer.get_proxy_cards(result)
-       pdf_gen.generate_proxy_pdf(proxy_cards, Path("proxies.pdf"))
+       proxy_cards = comparer.get_proxy_cards_for_generation(result, all_cards=False)
+       pdf_gen.generate_proxy_pdf(
+           proxy_cards,
+           Path("proxies.pdf"),
+           download_images=True,
+           group_by_pack=True,
+           interactive_printing_selection=False
+       )
+
+CLI Reference
+-------------
+
+Collection Management Commands:
+
+.. code-block:: bash
+
+   # Initialize collection
+   simulchip collect init
+
+   # Interactive management
+   simulchip collect manage
+   simulchip collect packs
+   simulchip collect cards
+
+   # Reset collection data
+   simulchip collect reset
+
+Proxy Generation Commands:
+
+.. code-block:: bash
+
+   # Generate proxies
+   simulchip proxy generate URL
+   simulchip proxy generate URL --alternate-prints
+   simulchip proxy generate URL --all --no-images
+
+   # Compare decks
+   simulchip proxy compare URL
+
+   # Batch processing
+   simulchip proxy batch urls.txt
+
+New Library Features
+--------------------
+
+The library now includes several new modules:
+
+- **batch** - Batch processing utilities
+- **cli_utils** - CLI business logic
+- **display** - Display and formatting utilities
+- **filters** - Filtering and search functions
+- **interactive** - Interactive interface management
+- **models** - Data models and wrappers
+- **paths** - Path management utilities
+- **platform** - Platform-specific utilities
+- **collection.operations** - Collection operation helpers
 
 Building Custom Tools
 ---------------------
 
-The library is designed to be flexible. You can build your own tools for:
+Example using new utilities:
 
-- Batch processing multiple decklists
-- Custom collection management workflows
-- Integration with other Netrunner tools
-- Web interfaces for proxy generation
-- Automated collection syncing
+.. code-block:: python
 
-See the main README for detailed examples of building custom tools.
+   from simulchip.batch import process_decklist_batch
+   from simulchip.filters import filter_packs_raw
+   from simulchip.display import get_completion_color
+
+   # Process multiple decks at once
+   result = process_decklist_batch(
+       decklist_file=Path("urls.txt"),
+       generate_func=my_generate_function,
+       progress_callback=my_progress_callback
+   )
+
+   # Filter packs with search
+   filtered_packs = filter_packs_raw(all_packs, "core")
+
+   # Get color coding for completion percentages
+   color = get_completion_color(75.0)  # Returns "yellow"
+
+See the API reference for complete documentation of all modules and functions.

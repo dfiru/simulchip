@@ -33,11 +33,13 @@ class CollectionData(TypedDict, total=False):
 
     Attributes:
         packs: List of pack codes that are fully owned.
+        owned_packs: List of pack codes that are owned (new format).
         cards: Dictionary mapping card codes to quantities owned.
         missing: Dictionary mapping card codes to quantities marked as missing.
     """
 
     packs: List[str]
+    owned_packs: List[str]
     cards: Dict[str, int]
     missing: Dict[str, int]
 
@@ -123,8 +125,13 @@ class CollectionManager:
 
     collection_file: Optional[Path] = None
     api: Optional[APIClient] = None
-    collection: Dict[str, int] = field(default_factory=dict)
     owned_packs: Set[str] = field(default_factory=set)
+    card_diffs: Dict[str, int] = field(
+        default_factory=dict
+    )  # Differences from expected
+
+    # Deprecated - kept for backward compatibility during migration
+    collection: Dict[str, int] = field(default_factory=dict)
     missing_cards: Dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -174,7 +181,15 @@ class CollectionManager:
         """
         if isinstance(data, dict):
             # Load owned packs
-            if "packs" in data:
+            if "owned_packs" in data:
+                packs = data["owned_packs"]
+                if not isinstance(packs, list):
+                    raise CollectionError(
+                        f"'owned_packs' must be a list, got {type(packs).__name__}"
+                    )
+                self.owned_packs = set(packs)
+            elif "packs" in data:
+                # Backward compatibility
                 packs = data["packs"]
                 if not isinstance(packs, list):
                     raise CollectionError(
@@ -182,19 +197,29 @@ class CollectionManager:
                     )
                 self.owned_packs = set(packs)
 
-            # Load individual cards
-            if "cards" in data:
+            # Load card differences (new format)
+            if "cards" in data and "owned_packs" in data:
+                cards = data["cards"]
+                if not isinstance(cards, dict):
+                    raise CollectionError(
+                        f"'cards' must be a dict, got {type(cards).__name__}"
+                    )
+                # In new format, cards stores differences from expected
+                self.card_diffs = self._validate_card_counts(cards, allow_negative=True)
+
+            # Backward compatibility: Load individual cards (old format)
+            elif "cards" in data:
                 cards = data["cards"]
                 if not isinstance(cards, dict):
                     raise CollectionError(
                         f"'cards' must be a dict, got {type(cards).__name__}"
                     )
                 self.collection = self._validate_card_counts(cards)
-            elif "packs" not in data:
-                # Root-level card dict
+            elif "packs" not in data and "owned_packs" not in data:
+                # Root-level card dict (old format)
                 self.collection = self._validate_card_counts(data)
 
-            # Load missing cards
+            # Load missing cards (backward compatibility)
             if "missing" in data:
                 missing = data["missing"]
                 if not isinstance(missing, dict):
@@ -218,11 +243,14 @@ class CollectionManager:
                 f"Invalid collection data type: {type(data).__name__}"
             )
 
-    def _validate_card_counts(self, cards: Dict[str, Any]) -> Dict[str, int]:
+    def _validate_card_counts(
+        self, cards: Dict[str, Any], allow_negative: bool = False
+    ) -> Dict[str, int]:
         """Validate and convert card counts to integers.
 
         Args:
             cards: Dictionary of card codes to counts
+            allow_negative: Whether to allow negative counts (for differences)
 
         Returns:
             Validated dictionary with integer counts
@@ -234,12 +262,18 @@ class CollectionManager:
         for code, count in cards.items():
             try:
                 count_int = int(count)
-                if count_int < 0:
+                if not allow_negative and count_int < 0:
                     raise CollectionError(
                         f"Card count cannot be negative: {code}={count}"
                     )
-                if count_int > 0:
-                    validated[str(code)] = count_int
+                if allow_negative:
+                    # For differences, store all non-zero values (positive and negative)
+                    if count_int != 0:
+                        validated[str(code)] = count_int
+                else:
+                    # For absolute counts, only store positive values
+                    if count_int > 0:
+                        validated[str(code)] = count_int
             except (ValueError, TypeError) as e:
                 raise CollectionError(f"Invalid count for card {code}: {count}") from e
         return validated
@@ -254,12 +288,22 @@ class CollectionManager:
             return
 
         data: CollectionData = {}
-        if self.owned_packs:
-            data["packs"] = sorted(self.owned_packs)
-        if self.collection:
-            data["cards"] = dict(sorted(self.collection.items()))
-        if self.missing_cards:
-            data["missing"] = dict(sorted(self.missing_cards.items()))
+
+        # Use new format if we have card_diffs, otherwise use legacy format for compatibility
+        if self.card_diffs or (self.owned_packs and not self.collection):
+            # New simplified format
+            if self.owned_packs:
+                data["owned_packs"] = sorted(self.owned_packs)
+            if self.card_diffs:
+                data["cards"] = dict(sorted(self.card_diffs.items()))
+        else:
+            # Legacy format for backward compatibility
+            if self.owned_packs:
+                data["packs"] = sorted(self.owned_packs)
+            if self.collection:
+                data["cards"] = dict(sorted(self.collection.items()))
+            if self.missing_cards:
+                data["missing"] = dict(sorted(self.missing_cards.items()))
 
         # Atomic write with temporary file
         temp_file = self.collection_file.with_suffix(".tmp")
@@ -465,3 +509,119 @@ class CollectionManager:
     def get_owned_packs(self) -> List[str]:
         """Get sorted list of owned pack codes."""
         return sorted(self.owned_packs)
+
+    def get_expected_card_count(self, card_code: str) -> int:
+        """Get expected card count based on owned packs."""
+        if not self.api:
+            return 0
+
+        cards = self.api.get_all_cards()
+        card = cards.get(card_code)
+        if not card:
+            return 0
+
+        expected_count = 0
+        pack_code = card.get("pack_code")
+        if pack_code in self.owned_packs:
+            expected_count = card.get("quantity", 1)
+
+        return expected_count
+
+    def get_card_difference(self, card_code: str) -> int:
+        """Get card difference from expected (positive = extra, negative = missing)."""
+        return self.card_diffs.get(card_code, 0)
+
+    def get_actual_card_count(self, card_code: str) -> int:
+        """Get actual card count (expected + difference)."""
+        expected = self.get_expected_card_count(card_code)
+        diff = self.get_card_difference(card_code)
+        return max(0, expected + diff)
+
+    def modify_card_difference(self, card_code: str, delta: int) -> None:
+        """Modify card difference by delta amount.
+
+        Args:
+            card_code: Card code to modify
+            delta: Change in difference (positive or negative)
+        """
+        if not card_code:
+            raise ValueError("Card code cannot be empty")
+
+        current_diff = self.card_diffs.get(card_code, 0)
+        new_diff = current_diff + delta
+
+        if new_diff == 0:
+            # Remove from dict if difference is zero
+            self.card_diffs.pop(card_code, None)
+        else:
+            self.card_diffs[card_code] = new_diff
+
+    def set_card_difference(self, card_code: str, difference: int) -> None:
+        """Set card difference directly.
+
+        Args:
+            card_code: Card code to modify
+            difference: New difference value (positive = extra, negative = missing)
+        """
+        if not card_code:
+            raise ValueError("Card code cannot be empty")
+
+        if difference == 0:
+            self.card_diffs.pop(card_code, None)
+        else:
+            self.card_diffs[card_code] = difference
+
+    def get_all_cards_with_differences(self) -> Dict[str, Dict[str, int]]:
+        """Get all cards with their expected counts and differences.
+
+        Returns:
+            Dict mapping card codes to {'expected': int, 'difference': int, 'actual': int}
+        """
+        if not self.api:
+            return {}
+
+        cards = self.api.get_all_cards()
+        result = {}
+
+        # First, add all cards that have expected counts from owned packs
+        for card_code, card in cards.items():
+            pack_code = card.get("pack_code")
+            if pack_code in self.owned_packs:
+                expected = card.get("quantity", 1)
+                difference = self.card_diffs.get(card_code, 0)
+                actual = max(0, expected + difference)
+                result[card_code] = {
+                    "expected": expected,
+                    "difference": difference,
+                    "actual": actual,
+                }
+
+        # Then, add any cards that have differences but no expected count
+        for card_code, difference in self.card_diffs.items():
+            if card_code not in result:
+                result[card_code] = {
+                    "expected": 0,
+                    "difference": difference,
+                    "actual": max(0, difference),
+                }
+
+        return result
+
+    def get_statistics(self) -> Dict[str, int]:
+        """Calculate collection statistics.
+
+        Returns:
+            Dictionary with statistics:
+            - owned_packs: Number of owned packs
+            - unique_cards: Number of unique cards owned
+            - total_cards: Total number of cards (counting duplicates)
+            - missing_cards: Total number of missing cards
+        """
+        all_cards = self.get_all_cards()
+
+        return {
+            "owned_packs": len(self.owned_packs),
+            "unique_cards": len(all_cards),
+            "total_cards": sum(all_cards.values()),
+            "missing_cards": sum(self.missing_cards.values()),
+        }

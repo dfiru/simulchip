@@ -25,6 +25,7 @@ class CacheManager:
         self.cards_cache_file = self.cache_dir / "cards.json"
         self.packs_cache_file = self.cache_dir / "packs.json"
         self.images_dir = self.cache_dir / "images"
+        self.metadata_file = self.cache_dir / "cache_metadata.json"
 
         # Create cache directories
         self.cache_dir.mkdir(exist_ok=True)
@@ -162,6 +163,8 @@ class CacheManager:
             self.cards_cache_file.unlink()
         if self.packs_cache_file.exists():
             self.packs_cache_file.unlink()
+        if self.metadata_file.exists():
+            self.metadata_file.unlink()
 
         # Clear images
         for ext in ["*.png", "*.jpg"]:
@@ -191,3 +194,96 @@ class CacheManager:
         stats["cache_size_mb"] = round(total_size / (1024 * 1024), 2)
 
         return stats
+
+    def get_cache_metadata(self) -> Dict[str, Any]:
+        """Get cache metadata including timestamps and pack info.
+
+        Returns:
+            Dictionary with cache metadata or empty dict if not exists
+        """
+        if self.metadata_file.exists():
+            try:
+                with open(self.metadata_file, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+                    return dict(metadata)  # Ensure dict type
+            except (json.JSONDecodeError, IOError):
+                return {}
+        return {}
+
+    def update_cache_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Update cache metadata.
+
+        Args:
+            metadata: Metadata dictionary to save
+        """
+        with open(self.metadata_file, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2)
+
+    def get_latest_pack_date(self, packs: List[Dict[str, Any]]) -> Optional[str]:
+        """Get the release date of the most recent pack.
+
+        Args:
+            packs: List of pack data
+
+        Returns:
+            Latest release date string or None
+        """
+        if not packs:
+            return None
+
+        # Sort packs by release date and get the latest
+        sorted_packs = sorted(
+            packs, key=lambda p: p.get("date_release") or "", reverse=True
+        )
+
+        return sorted_packs[0].get("date_release") if sorted_packs else None
+
+    def is_cache_valid(self, packs: Optional[List[Dict[str, Any]]] = None) -> bool:
+        """Check if cache is still valid based on pack releases.
+
+        Args:
+            packs: Optional pack data to check against
+
+        Returns:
+            True if cache is valid, False if it needs refresh
+        """
+        metadata = self.get_cache_metadata()
+
+        # No metadata means cache is invalid
+        if not metadata:
+            return False
+
+        # Check if cache files exist
+        if not self.cards_cache_file.exists() or not self.packs_cache_file.exists():
+            return False
+
+        # If we have pack data, check if there are new packs
+        if packs:
+            latest_pack_date = self.get_latest_pack_date(packs)
+            cached_latest_date = metadata.get("latest_pack_date")
+
+            # If we have a new pack, cache is invalid
+            if latest_pack_date and cached_latest_date:
+                if latest_pack_date > cached_latest_date:
+                    return False
+
+        # Check cache age as fallback (7 days instead of 24 hours)
+        cache_timestamp = metadata.get("timestamp", 0)
+        age = time.time() - cache_timestamp
+        if age > 604800:  # 7 days
+            return False
+
+        return True
+
+    def mark_cache_fresh(self, packs: List[Any]) -> None:
+        """Mark cache as freshly updated with pack info.
+
+        Args:
+            packs: Current pack data
+        """
+        metadata = {
+            "timestamp": time.time(),
+            "latest_pack_date": self.get_latest_pack_date(packs),
+            "pack_count": len(packs),
+        }
+        self.update_cache_metadata(metadata)

@@ -358,6 +358,23 @@ class DecklistComparer:
             comparison_result.missing_cards, key=lambda c: (c.pack_name, c.title)
         )
 
+    def get_proxy_cards_for_generation(
+        self, comparison_result: ComparisonResult, all_cards: bool = False
+    ) -> List[CardInfo]:
+        """Get list of cards for proxy generation with all_cards option.
+
+        Args:
+            comparison_result: Result from compare_decklist
+            all_cards: If True, return all cards; if False, return only missing cards
+
+        Returns:
+            List of cards for proxy generation
+        """
+        if all_cards:
+            return comparison_result.all_cards
+        else:
+            return self.get_proxy_cards(comparison_result)
+
     def format_comparison_report(self, comparison_result: ComparisonResult) -> str:
         """Format comparison result as a readable report.
 
