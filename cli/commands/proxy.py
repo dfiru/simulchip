@@ -16,9 +16,7 @@ from simulchip.cli_utils import (
     get_proxy_generation_message,
     resolve_collection_path,
     should_generate_proxies,
-    validate_collection_exists,
 )
-from simulchip.collection.manager import CollectionManager
 from simulchip.collection.operations import get_or_create_manager
 from simulchip.comparison import DecklistComparer
 from simulchip.display import get_completion_color
@@ -56,6 +54,11 @@ LIMIT_OPTION = typer.Option(
 ALTERNATE_PRINTS_OPTION = typer.Option(
     False, "--alternate-prints", help="Interactively select alternate printings"
 )
+COMPARE_ONLY_OPTION = typer.Option(
+    False,
+    "--compare-only",
+    help="Only compare deck against collection, don't generate PDF",
+)
 
 
 @app.command()
@@ -67,8 +70,10 @@ def generate(
     no_images: bool = NO_IMAGES_OPTION,
     page_size: str = PAGE_SIZE_OPTION,
     alternate_prints: bool = ALTERNATE_PRINTS_OPTION,
+    compare_only: bool = COMPARE_ONLY_OPTION,
+    detailed: bool = DETAILED_OPTION,
 ) -> Any:
-    """Generate proxy sheets for a decklist."""
+    """Generate proxy sheets for a decklist, or just compare it against your collection."""
     # Extract decklist ID
     decklist_id = extract_decklist_id(decklist_url)
     if not decklist_id:
@@ -99,6 +104,33 @@ def generate(
             console.print(f"[red]✗ Error fetching decklist: {e}[/red]")
             raise typer.Exit(1)
 
+    # If compare_only is True, display results and exit
+    if compare_only:
+        # Display results
+        console.print(f"\n[bold]Deck: {result.decklist_name}[/bold]")
+        console.print(f"Identity: [yellow]{result.identity.title}[/yellow]")
+        console.print(f"URL: [dim]{decklist_url}[/dim]\n")
+
+        # Stats using library function for color
+        completion_pct = result.stats.completion_percentage
+        color = get_completion_color(completion_pct)
+
+        console.print(f"Completion: [{color}]{completion_pct:.1f}%[/{color}]")
+        console.print(f"Total cards: {result.stats.total_cards}")
+        console.print(f"Cards owned: [green]{result.stats.owned_cards}[/green]")
+        console.print(f"Cards missing: [red]{result.stats.missing_cards}[/red]")
+
+        if detailed and result.missing_cards:
+            console.print("\n[bold]Missing Cards:[/bold]")
+            report = comparer.format_comparison_report(result)
+            console.print(report)
+        return
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
         # Determine output path using library function
         if output is None:
             output = generate_default_output_path(result)
@@ -141,59 +173,3 @@ def generate(
     console.print(f"Total cards: {result.stats.total_cards}")
     console.print(f"Cards owned: {result.stats.owned_cards}")
     console.print(f"Cards missing: {result.stats.missing_cards}")
-
-
-@app.command()
-def compare(
-    decklist_url: str,
-    collection_file: Optional[Path] = COLLECTION_OPTION,
-    detailed: bool = DETAILED_OPTION,
-) -> Any:
-    """Compare a decklist against your collection."""
-    # Extract decklist ID
-    decklist_id = extract_decklist_id(decklist_url)
-    if not decklist_id:
-        console.print(f"[red]✗ Invalid decklist URL: {decklist_url}[/red]")
-        raise typer.Exit(1)
-
-    # Initialize API and collection
-    api = NetrunnerDBAPI()
-
-    collection_file = resolve_collection_path(collection_file)
-
-    if not validate_collection_exists(collection_file):
-        console.print(f"[red]✗ Collection not found at {collection_file}[/red]")
-        console.print(
-            "[yellow]Initialize a collection with: simulchip collection init[/yellow]"
-        )
-        raise typer.Exit(1)
-
-    manager = CollectionManager(collection_file=collection_file, api=api)
-    comparer = DecklistComparer(api, manager)
-
-    # Compare decklist
-    with console.status("Comparing decklist..."):
-        try:
-            result = comparer.compare_decklist(decklist_id)
-        except Exception as e:
-            console.print(f"[red]✗ Error comparing decklist: {e}[/red]")
-            raise typer.Exit(1)
-
-    # Display results
-    console.print(f"\n[bold]Deck: {result.decklist_name}[/bold]")
-    console.print(f"Identity: [yellow]{result.identity.title}[/yellow]")
-    console.print(f"URL: [dim]{decklist_url}[/dim]\n")
-
-    # Stats using library function for color
-    completion_pct = result.stats.completion_percentage
-    color = get_completion_color(completion_pct)
-
-    console.print(f"Completion: [{color}]{completion_pct:.1f}%[/{color}]")
-    console.print(f"Total cards: {result.stats.total_cards}")
-    console.print(f"Cards owned: [green]{result.stats.owned_cards}[/green]")
-    console.print(f"Cards missing: [red]{result.stats.missing_cards}[/red]")
-
-    if detailed and result.missing_cards:
-        console.print("\n[bold]Missing Cards:[/bold]")
-        report = comparer.format_comparison_report(result)
-        console.print(report)

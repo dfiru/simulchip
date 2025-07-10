@@ -142,8 +142,8 @@ Proxy Generation Commands:
    simulchip proxy generate URL --alternate-prints
    simulchip proxy generate URL --all --no-images
 
-   # Compare decks
-   simulchip proxy compare URL
+   # Compare decks (no PDF generation)
+   simulchip proxy generate URL --compare-only
 
 New Library Features
 --------------------

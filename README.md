@@ -69,8 +69,8 @@ simulchip collect cards
 # Generate proxies for a deck
 simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Compare a deck against your collection
-simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+# Compare a deck against your collection (no PDF generation)
+simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c --compare-only
 
 ```
 
@@ -125,9 +125,8 @@ simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-
 # Generate proxies using deck ID only
 simulchip proxy generate 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Compare a deck against your collection
-simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
-
+# Compare a deck against your collection (no PDF generation)
+simulchip proxy generate DECK_ID --compare-only
 
 # Generate proxies for all cards (not just missing ones)
 simulchip proxy generate DECK_ID --all

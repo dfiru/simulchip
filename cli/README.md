@@ -51,9 +51,9 @@ The proxy PDF will be saved to:
 - Runner decks: `decks/runner/{identity-slug}/{deck-name}.pdf`
 - Corp decks: `decks/corporation/{identity-slug}/{deck-name}.pdf`
 
-Compare a decklist against your collection:
+Compare a decklist against your collection (without generating PDF):
 ```bash
-simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/deck-name
+simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --compare-only
 ```
 
 Generate proxies for all cards (not just missing):
@@ -88,7 +88,7 @@ simulchip collect packs
 simulchip collect cards
 
 # Check what's missing from a deck
-simulchip proxy compare https://netrunnerdb.com/en/decklist/12345/my-deck
+simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --compare-only
 
 # Generate proxies for missing cards
 simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck
