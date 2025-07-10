@@ -49,28 +49,45 @@ class TestNetrunnerDBAPISimple:
         assert error.url is None
 
     @patch("simulchip.api.netrunnerdb.NetrunnerDBAPI._make_request")
+    @patch("simulchip.cache.CacheManager.get_cached_packs")
     @patch("simulchip.cache.CacheManager.get_cached_cards")
     def test_get_all_cards_uses_cache(
-        self, mock_cache_get: Mock, mock_request: Mock
+        self, mock_cache_get_cards: Mock, mock_cache_get_packs: Mock, mock_request: Mock
     ) -> None:
         """Test that get_all_cards uses caching."""
-        # Mock cache to return None initially
-        mock_cache_get.return_value = None
+        # Mock cache to return None initially (no cached data)
+        mock_cache_get_cards.return_value = None
+        mock_cache_get_packs.return_value = None
 
-        # Mock the response format
-        mock_request.return_value = {"data": [{"code": "01001", "title": "Test Card"}]}
+        # Mock the response format for different endpoints
+        def side_effect(endpoint: str, *args, **kwargs):
+            if endpoint == "cards":
+                return {"data": [{"code": "01001", "title": "Test Card"}]}
+            elif endpoint == "packs":
+                return {
+                    "data": [
+                        {
+                            "code": "core",
+                            "name": "Core Set",
+                            "date_release": "2023-01-01",
+                        }
+                    ]
+                }
+            return {"data": []}
+
+        mock_request.side_effect = side_effect
 
         api = NetrunnerDBAPI()
 
-        # First call should hit the API
+        # First call should hit the API twice (cards + packs for cache metadata)
         result1 = api.get_all_cards()
         assert "01001" in result1
-        assert mock_request.call_count == 1
+        assert mock_request.call_count == 2  # Cards + Packs
 
         # Second call should use internal cache (not hit API again)
         result2 = api.get_all_cards()
         assert result2 == result1
-        assert mock_request.call_count == 1  # Still only called once
+        assert mock_request.call_count == 2  # Still only called twice total
 
     @patch("simulchip.api.netrunnerdb.NetrunnerDBAPI._make_request")
     @patch("simulchip.cache.CacheManager.get_cached_packs")
