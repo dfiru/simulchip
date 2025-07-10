@@ -187,20 +187,68 @@ class ProxyPDFGenerator:
                 # Instructions
                 instructions = Text()
                 instructions.append("↑/↓", style="cyan")
-                instructions.append(" navigate, ", style="dim")
+                instructions.append(" navigate (with preview), ", style="dim")
                 instructions.append("Enter", style="cyan")
                 instructions.append(" select, ", style="dim")
                 instructions.append("q/Esc", style="cyan")
                 instructions.append(" use newest (default)", style="dim")
 
+                # Try to display card image for selected printing
+                card_preview = None
+                try:
+                    # First-party imports
+                    from simulchip.terminal_images import (
+                        get_card_image_url,
+                        render_card_image_terminal,
+                    )
+
+                    selected_printing = printings[selected_idx]
+                    image_url = get_card_image_url(selected_printing)
+                    if image_url:
+                        card_preview = render_card_image_terminal(image_url, width=25)
+                except Exception:
+                    # Silently ignore image rendering failures
+                    pass
+
                 # Display
                 # Third-party imports
                 from rich.console import Group
 
-                display_group = Group(table, Text(""), instructions)  # Blank line
+                if card_preview:
+                    # Show table and image side by side
+                    table_and_instructions = Group(table, Text(""), instructions)
+
+                    # Get pack name for preview
+                    selected_pack_code = selected_printing.get("pack_code", "")
+                    selected_pack = packs.get(selected_pack_code, {})  # type: ignore
+                    selected_pack_name = selected_pack.get("name", "Unknown Pack")
+
+                    # Create preview header with proper markup
+                    preview_header = Text()
+                    preview_header.append("Preview: ", style="bold cyan")
+                    preview_header.append(selected_pack_name, style="cyan")
+
+                    preview_section = Group(
+                        preview_header,
+                        card_preview,
+                    )
+                    # Try to force side-by-side layout
+                    # Use a table to ensure columns stay side by side
+                    layout_table = Table(show_header=False, box=None, padding=0)
+                    layout_table.add_column(ratio=2)  # Table column
+                    layout_table.add_column(ratio=1)  # Preview column
+                    layout_table.add_row(table_and_instructions, preview_section)
+                else:
+                    display_group = Group(table, Text(""), instructions)  # Blank line
+
+                # Choose the right display based on whether we have a preview
+                if card_preview:
+                    display = layout_table
+                else:
+                    display = display_group
 
                 panel = Panel(
-                    display_group,
+                    display,
                     title="[bold]Alternate Printing Selection[/bold]",
                     subtitle=f"[dim]{len(printings)} printings available[/dim]",
                     border_style="blue",
