@@ -11,7 +11,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 # First-party imports
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
-from simulchip.batch import process_decklist_batch
 from simulchip.cli_utils import (
     ensure_output_directory,
     get_proxy_generation_message,
@@ -198,57 +197,3 @@ def compare(
         console.print("\n[bold]Missing Cards:[/bold]")
         report = comparer.format_comparison_report(result)
         console.print(report)
-
-
-@app.command()
-def batch(
-    decklist_file: Path,
-    collection_file: Optional[Path] = COLLECTION_OPTION,
-    no_images: bool = NO_IMAGES_OPTION,
-    page_size: str = PAGE_SIZE_OPTION,
-    alternate_prints: bool = ALTERNATE_PRINTS_OPTION,
-) -> Any:
-    """Generate proxy sheets for multiple decklists from a file."""
-
-    def generate_proxy(url: str) -> None:
-        """Generate proxy for a single URL."""
-        generate(
-            decklist_url=url,
-            collection_file=collection_file,
-            no_images=no_images,
-            page_size=page_size,
-            output=None,
-            all_cards=False,
-            alternate_prints=alternate_prints,
-        )
-
-    def progress_callback(current: int, total: int, url: str) -> None:
-        """Progress callback for batch processing."""
-        console.print(f"[dim]Processing {current}/{total}:[/dim] {url}")
-
-    def error_callback(url: str, error: Exception) -> None:
-        """Error callback for batch processing."""
-        console.print(f"[red]✗ Error processing {url}: {error}[/red]\n")
-
-    try:
-        # Process batch using library function
-        result = process_decklist_batch(
-            decklist_file=decklist_file,
-            generate_func=generate_proxy,
-            progress_callback=progress_callback,
-            error_callback=error_callback,
-        )
-
-        console.print(f"[blue]Found {result.total_count} decklists to process[/blue]\n")
-
-        # Show summary
-        console.print("\n[bold]Batch complete![/bold]")
-        console.print(f"Success: [green]{result.success_count}[/green]")
-        console.print(f"Failed: [red]{result.failed_count}[/red]")
-
-    except FileNotFoundError:
-        console.print(f"[red]✗ File not found: {decklist_file}[/red]")
-        raise typer.Exit(1)
-    except ValueError as e:
-        console.print(f"[red]✗ {e}[/red]")
-        raise typer.Exit(1)

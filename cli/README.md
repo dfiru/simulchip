@@ -66,14 +66,6 @@ Select alternate printings interactively:
 simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --alternate-prints
 ```
 
-Process multiple decklists:
-```bash
-# Create a file with one URL per line
-echo "https://netrunnerdb.com/en/decklist/12345/deck1" > decklists.txt
-echo "https://netrunnerdb.com/en/decklist/67890/deck2" >> decklists.txt
-
-simulchip proxy batch decklists.txt
-```
 
 ### Options
 

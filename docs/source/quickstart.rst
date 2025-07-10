@@ -145,15 +145,11 @@ Proxy Generation Commands:
    # Compare decks
    simulchip proxy compare URL
 
-   # Batch processing
-   simulchip proxy batch urls.txt
-
 New Library Features
 --------------------
 
 The library now includes several new modules:
 
-- **batch** - Batch processing utilities
 - **cli_utils** - CLI business logic
 - **display** - Display and formatting utilities
 - **filters** - Filtering and search functions
@@ -170,16 +166,8 @@ Example using new utilities:
 
 .. code-block:: python
 
-   from simulchip.batch import process_decklist_batch
    from simulchip.filters import filter_packs_raw
    from simulchip.display import get_completion_color
-
-   # Process multiple decks at once
-   result = process_decklist_batch(
-       decklist_file=Path("urls.txt"),
-       generate_func=my_generate_function,
-       progress_callback=my_progress_callback
-   )
 
    # Filter packs with search
    filtered_packs = filter_packs_raw(all_packs, "core")

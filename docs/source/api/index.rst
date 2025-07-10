@@ -10,7 +10,6 @@ This section contains the complete API reference for Simulchip.
    collection
    pdf
    utils
-   batch
    cli_utils
    display
    filters
@@ -33,7 +32,6 @@ Core Modules
    simulchip.comparison
    simulchip.cache
    simulchip.utils
-   simulchip.batch
    simulchip.cli_utils
    simulchip.display
    simulchip.filters

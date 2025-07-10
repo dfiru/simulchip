@@ -72,8 +72,6 @@ simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-
 # Compare a deck against your collection
 simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Batch generate proxies for multiple decks
-simulchip proxy batch decklist-urls.txt
 ```
 
 ### 3. Interactive Management
@@ -130,8 +128,6 @@ simulchip proxy generate 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 # Compare a deck against your collection
 simulchip proxy compare https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
-# Batch generate proxies for multiple decks
-simulchip proxy batch decklist-urls.txt
 
 # Generate proxies for all cards (not just missing ones)
 simulchip proxy generate DECK_ID --all
@@ -212,7 +208,7 @@ The library includes modules for:
 - **Collection Management** (`simulchip.collection`) - Local collection handling
 - **Deck Comparison** (`simulchip.comparison`) - Deck analysis and comparison
 - **PDF Generation** (`simulchip.pdf`) - Proxy sheet creation
-- **Utilities** (`simulchip.batch`, `simulchip.filters`, etc.) - Helper functions
+- **Utilities** (`simulchip.filters`, `simulchip.display`, etc.) - Helper functions
 
 ## Collection File Format
 
