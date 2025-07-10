@@ -67,10 +67,10 @@ simulchip collect cards
 ### 2. Generate Proxy Sheets
 ```bash
 # Generate proxies for a deck
-simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 # Compare a deck against your collection (no PDF generation)
-simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c --compare-only
+simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c --compare-only
 
 ```
 
@@ -120,28 +120,28 @@ simulchip collect packs --collection ./my-collection.toml
 
 ```bash
 # Generate proxies for a single deck
-simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 # Generate proxies using deck ID only
-simulchip proxy generate 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+simulchip proxy 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 # Compare a deck against your collection (no PDF generation)
-simulchip proxy generate DECK_ID --compare-only
+simulchip proxy DECK_ID --compare-only
 
 # Generate proxies for all cards (not just missing ones)
-simulchip proxy generate DECK_ID --all
+simulchip proxy DECK_ID --all
 
 # Skip downloading card images for faster generation
-simulchip proxy generate DECK_ID --no-images
+simulchip proxy DECK_ID --no-images
 
 # Interactive alternate printing selection
-simulchip proxy generate DECK_ID --alternate-prints
+simulchip proxy DECK_ID --alternate-prints
 
 # Custom output path
-simulchip proxy generate DECK_ID --output ./my-proxies/deck.pdf
+simulchip proxy DECK_ID --output ./my-proxies/deck.pdf
 
 # Use custom collection file
-simulchip proxy generate DECK_ID --collection ./my-collection.toml
+simulchip proxy DECK_ID --collection ./my-collection.toml
 ```
 
 ### Proxy Output Structure

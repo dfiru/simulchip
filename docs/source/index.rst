@@ -35,8 +35,8 @@ Quick Example
    simulchip collect cards
 
    # Compare against a decklist and generate proxies
-   simulchip proxy generate https://netrunnerdb.com/en/decklist/12345 --compare-only
-   simulchip proxy generate https://netrunnerdb.com/en/decklist/12345
+   simulchip proxy https://netrunnerdb.com/en/decklist/12345 --compare-only
+   simulchip proxy https://netrunnerdb.com/en/decklist/12345
 
 Indices and tables
 ==================

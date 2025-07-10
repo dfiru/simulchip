@@ -27,8 +27,8 @@ from simulchip.utils import extract_decklist_id
 # Initialize console for rich output
 console = Console()
 
-# Create the proxy command group
-app = typer.Typer(help="Generate proxy sheets for decklists")
+# This module exports the proxy command function directly
+# No need for a Typer app since we're making proxy a direct command
 
 
 # Default options for typer to avoid B008 flake8 warnings
@@ -61,8 +61,7 @@ COMPARE_ONLY_OPTION = typer.Option(
 )
 
 
-@app.command()
-def generate(
+def proxy(
     decklist_url: str,
     output: Optional[Path] = OUTPUT_OPTION,
     collection_file: Optional[Path] = COLLECTION_OPTION,

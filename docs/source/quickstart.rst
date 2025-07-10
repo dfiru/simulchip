@@ -37,7 +37,7 @@ The quickest way to get started is with the CLI:
    simulchip collect cards
 
    # Generate proxies for a deck
-   simulchip proxy generate https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
+   simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 Basic Library Usage
 -------------------
@@ -138,12 +138,12 @@ Proxy Generation Commands:
 .. code-block:: bash
 
    # Generate proxies
-   simulchip proxy generate URL
-   simulchip proxy generate URL --alternate-prints
-   simulchip proxy generate URL --all --no-images
+   simulchip proxy URL
+   simulchip proxy URL --alternate-prints
+   simulchip proxy URL --all --no-images
 
    # Compare decks (no PDF generation)
-   simulchip proxy generate URL --compare-only
+   simulchip proxy URL --compare-only
 
 New Library Features
 --------------------

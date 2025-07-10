@@ -44,7 +44,7 @@ simulchip collect reset
 
 Generate proxy sheets for missing cards:
 ```bash
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/deck-name
 ```
 
 The proxy PDF will be saved to:
@@ -53,17 +53,17 @@ The proxy PDF will be saved to:
 
 Compare a decklist against your collection (without generating PDF):
 ```bash
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --compare-only
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/deck-name --compare-only
 ```
 
 Generate proxies for all cards (not just missing):
 ```bash
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --all
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/deck-name --all
 ```
 
 Select alternate printings interactively:
 ```bash
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/deck-name --alternate-prints
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/deck-name --alternate-prints
 ```
 
 
@@ -88,16 +88,16 @@ simulchip collect packs
 simulchip collect cards
 
 # Check what's missing from a deck
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --compare-only
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/my-deck --compare-only
 
 # Generate proxies for missing cards
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/my-deck
 
 # Generate proxies with alternate printing selection
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --alternate-prints
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/my-deck --alternate-prints
 
 # Generate proxies for all cards in a deck (useful for testing)
-simulchip proxy generate https://netrunnerdb.com/en/decklist/12345/my-deck --all
+simulchip proxy https://netrunnerdb.com/en/decklist/12345/my-deck --all
 ```
 
 ## Interactive Features

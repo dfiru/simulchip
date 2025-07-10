@@ -28,7 +28,9 @@ app = typer.Typer(
 
 # Add command groups
 app.add_typer(collection.app, name="collect", help="Manage your card collection")
-app.add_typer(proxy.app, name="proxy", help="Generate proxy sheets for decklists")
+
+# Add proxy as a direct command
+app.command(name="proxy", help="Generate proxy sheets for decklists")(proxy.proxy)
 
 
 @app.command()
