@@ -59,7 +59,7 @@ def render_card_image_terminal(image_url: str, width: int = 40) -> Optional[Pixe
 
     try:
         # Convert to terminal pixels
-        pixels = Pixels.from_image(image, resize=(width, height))
+        pixels: Pixels = Pixels.from_image(image, resize=(width, height))
         return pixels
     except Exception:
         # Silently fail if rendering doesn't work

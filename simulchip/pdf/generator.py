@@ -10,7 +10,7 @@ Classes:
 
 # Standard library imports
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 # Third-party imports
 from PIL import Image
@@ -242,6 +242,7 @@ class ProxyPDFGenerator:
                     display_group = Group(table, Text(""), instructions)  # Blank line
 
                 # Choose the right display based on whether we have a preview
+                display: Union[Table, Group]
                 if card_preview:
                     display = layout_table
                 else:
