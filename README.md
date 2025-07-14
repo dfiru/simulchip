@@ -1,7 +1,7 @@
 # Simulchip - Netrunner Proxy Library
 
 [![CI](https://github.com/dfiru/simulchip/actions/workflows/ci.yml/badge.svg)](https://github.com/dfiru/simulchip/actions/workflows/ci.yml)
-[![Documentation](https://github.com/dfiru/simulchip/actions/workflows/docs.yml/badge.svg)](https://dfiru.github.io/simulchip/)
+[![Documentation](https://github.com/dfiru/simulchip/actions/workflows/publish.yml/badge.svg)](https://dfiru.github.io/simulchip/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
