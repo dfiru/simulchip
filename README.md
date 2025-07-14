@@ -9,6 +9,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/simulchip.svg)](https://badge.fury.io/py/simulchip)
 
 A Python library for comparing NetrunnerDB decklists against your local card collection and generating print-ready PDF proxy sheets for missing cards.
 
@@ -36,19 +37,17 @@ The result is a clean, efficient Python library and CLI tool that does exactly w
 
 ## Installation
 
-### Option 1: Install from Source
-```bash
-git clone https://github.com/dfiru/simulchip.git
-cd simulchip
-pip install -e .
-```
+Install simulchip from PyPI using pip:
 
-### Option 2: Use as Library Dependency
 ```bash
-pip install git+https://github.com/dfiru/simulchip.git
+pip install simulchip
 ```
 
 After installation, you'll have both the Python library and the `simulchip` command-line tool available.
+
+**Requirements:**
+- Python 3.10 or higher
+- Compatible with Python 3.10, 3.11, 3.12, and 3.13
 
 ## Quick Start
 
@@ -276,6 +275,18 @@ Examples: `01001` (Noise), `30010` (Zahya), `33004` (Steelskin Scarring)
 
 ## Development
 
+### Development Installation
+
+For development work, clone the repository and install in editable mode:
+
+```bash
+git clone https://github.com/dfiru/simulchip.git
+cd simulchip
+pip install -e ".[dev]"
+```
+
+This installs all development dependencies including testing, linting, and documentation tools.
+
 ### Dependencies
 - `requests` - HTTP requests to NetrunnerDB API
 - `reportlab` - PDF generation
@@ -283,6 +294,7 @@ Examples: `01001` (Noise), `30010` (Zahya), `33004` (Steelskin Scarring)
 - `toml` - TOML file support
 - `typer` - CLI framework
 - `rich` - Terminal UI
+- `rich-pixels` - Terminal image rendering
 
 ### Documentation
 - **API Documentation**: [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
