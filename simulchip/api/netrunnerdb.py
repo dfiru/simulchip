@@ -20,7 +20,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Final, List, Optional, TypedDict
+from typing import Any, Dict, Final, List, Optional, TypedDict, cast
 
 # Third-party imports
 import requests
@@ -309,10 +309,10 @@ class NetrunnerDBAPI:
 
     def _normalize_pack_data(self, raw_packs: List[Dict[str, Any]]) -> List[PackData]:
         """Normalize pack data to handle None values and ensure consistency.
-        
+
         Args:
             raw_packs: Raw pack data from API or cache
-            
+
         Returns:
             Normalized pack data
         """
@@ -322,7 +322,7 @@ class NetrunnerDBAPI:
             # Ensure date_release is properly handled (convert None to empty string)
             if normalized_pack.get("date_release") is None:
                 normalized_pack["date_release"] = ""
-            normalized_packs.append(normalized_pack)
+            normalized_packs.append(cast(PackData, normalized_pack))
         return normalized_packs
 
     def get_all_packs(self, skip_cache_check: bool = False) -> List[PackData]:
@@ -345,7 +345,7 @@ class NetrunnerDBAPI:
         if cached_data:
             # Normalize cached data to handle None values
             normalized_cached = self._normalize_pack_data(cached_data)
-            
+
             if skip_cache_check:
                 # Skip validation when called from get_all_cards
                 self._packs_cache = normalized_cached
@@ -380,9 +380,9 @@ class NetrunnerDBAPI:
 
             # Normalize pack data to handle None values
             packs = self._normalize_pack_data(response["data"])
-            
+
             self._packs_cache = packs
-            self.cache.cache_packs(packs)
+            self.cache.cache_packs(cast(List[Dict[str, Any]], packs))
 
             # Update cache metadata when fetching packs directly
             if not skip_cache_check:

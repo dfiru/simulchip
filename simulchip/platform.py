@@ -6,6 +6,8 @@ and user input handling.
 
 # Standard library imports
 import sys
+
+# Third-party imports
 import typer
 
 

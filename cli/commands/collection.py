@@ -10,10 +10,7 @@ from rich.console import Console
 
 # First-party imports
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
-from simulchip.cli_utils import (
-    ensure_collection_directory,
-    resolve_collection_path,
-)
+from simulchip.cli_utils import ensure_collection_directory, resolve_collection_path
 from simulchip.collection.manager import CollectionManager
 
 # Initialize console for rich output
@@ -22,13 +19,16 @@ console = Console()
 # Create the collection command group
 app = typer.Typer(help="Manage your card collection")
 
+# Define option constants
+COLLECTION_FILE_OPTION = typer.Option(
+    None, "--file", "-f", help="Path to collection file"
+)
+
 
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    collection_file: Optional[Path] = typer.Option(
-        None, "--file", "-f", help="Path to collection file"
-    )
+    collection_file: Optional[Path] = COLLECTION_FILE_OPTION,
 ) -> Any:
     """Manage your card collection with pack and card management."""
     if ctx.invoked_subcommand is None:
@@ -39,10 +39,11 @@ def main(
             if manager.api is not None:
                 console.print("[dim]Loading TUI app...[/dim]")
                 from ..screens.collection_app import CollectionMainApp
+
                 app = CollectionMainApp(manager, manager.api, collection_file)
                 console.print("[dim]Starting app...[/dim]")
                 result = app.run()
-                
+
                 # Handle the result
                 if result == "quit":
                     console.print("[dim]Collection management closed[/dim]")
@@ -56,10 +57,10 @@ def main(
                 console.print("[red]Error: API not available[/red]")
         except Exception as e:
             console.print(f"[red]Error launching TUI: {e}[/red]")
+            # Standard library imports
             import traceback
+
             traceback.print_exc()
-
-
 
 
 def get_collection_manager(collection_file: Optional[Path] = None) -> CollectionManager:
@@ -69,5 +70,3 @@ def get_collection_manager(collection_file: Optional[Path] = None) -> Collection
 
     api = NetrunnerDBAPI()
     return CollectionManager(collection_file=collection_file, api=api)
-
-

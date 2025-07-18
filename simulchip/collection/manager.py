@@ -580,7 +580,7 @@ class CollectionManager:
         """
         if not card_code:
             raise ValueError("Card code cannot be empty")
-        
+
         if count < 0:
             raise ValueError("Card count cannot be negative")
 

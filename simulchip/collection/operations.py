@@ -12,7 +12,6 @@ from ..api.netrunnerdb import NetrunnerDBAPI, PackData
 from .manager import CollectionManager
 
 
-
 def get_or_create_manager(
     collection_file: Optional[Path], api: NetrunnerDBAPI, all_cards: bool = False
 ) -> CollectionManager:
