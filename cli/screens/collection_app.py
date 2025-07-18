@@ -10,9 +10,12 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, DataTable, RichLog, Input, Log, Button
+from textual.widget import Widget
 from textual.reactive import reactive
 from textual import events
+from textual.message import Message
 
+from simulchip import __version__
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
 from simulchip.collection.manager import CollectionManager
 
@@ -69,6 +72,146 @@ class BaseScreen(Screen):
             logger.error(f"Error toggling log panel: {e}", exc_info=True)
 
 
+class FilterableDataTable(Widget):
+    """A reusable widget that combines a filter input with a DataTable."""
+    
+    CSS = """
+    FilterableDataTable {
+        layout: vertical;
+        height: 1fr;
+    }
+    
+    .filter-input-container {
+        height: 0;                   /* Start with no height */
+        margin: 0 1;
+        border: solid #45475a;       /* Surface1 */
+        background: #313244;         /* Surface0 */
+        color: #cdd6f4;              /* Text */
+        overflow: hidden;            /* Hide content when height is 0 */
+        transition: height 0.2s;     /* Smooth transition */
+    }
+    
+    .filter-input-container Input {
+        background: #313244;         /* Surface0 */
+        border: none;
+    }
+    
+    .filter-input-container Input:focus {
+        border: none;
+    }
+    
+    FilterableDataTable DataTable {
+        height: 1fr;
+        border: solid #45475a;       /* Surface1 */
+        background: #1e1e2e;         /* Base */
+        overflow-y: auto;
+    }
+    
+    FilterableDataTable DataTable > .datatable--header {
+        background: #313244;         /* Surface0 */
+        color: #cba6f7;              /* Mauve */
+        text-style: bold;
+    }
+    
+    FilterableDataTable DataTable > .datatable--cursor {
+        background: #cba6f7 20%;     /* Mauve with transparency */
+    }
+    
+    FilterableDataTable DataTable > .datatable--odd-row {
+        background: #181825;         /* Mantle */
+    }
+    
+    FilterableDataTable DataTable > .datatable--even-row {
+        background: #1e1e2e;         /* Base */
+    }
+    """
+    
+    class FilterChanged(Message):
+        """Message sent when filter text changes."""
+        def __init__(self, filter_text: str) -> None:
+            self.filter_text = filter_text
+            super().__init__()
+    
+    def __init__(self, placeholder: str = "Type to filter...", table_id: str = "data-table"):
+        super().__init__()
+        self.placeholder = placeholder
+        self.table_id = table_id
+        self.filter_input = None
+        self.filter_text = ""
+        # Create the table here so it's available before compose
+        self.table = DataTable(id=self.table_id, zebra_stripes=True, show_header=True)
+    
+    def compose(self) -> ComposeResult:
+        """Create the filterable table UI."""
+        # Filter input (initially hidden) - on top
+        with Container(classes="filter-input-container", id="filter-container"):
+            self.filter_input = Input(placeholder=self.placeholder, id="filter-input")
+            yield self.filter_input
+        
+        # DataTable directly
+        yield self.table
+    
+    @property
+    def data_table(self) -> DataTable:
+        """Get the DataTable widget."""
+        return self.table
+    
+    def show_filter(self) -> None:
+        """Show and focus the filter input."""
+        logger.info("=== FilterableDataTable.show_filter called ===")
+        filter_container = self.query_one("#filter-container", Container)
+        filter_container.styles.height = 3  # Set height to show
+        if self.filter_input:
+            logger.info(f"Setting focus to filter_input: {self.filter_input}")
+            self.filter_input.focus()
+            # Set value to current filter text if any
+            if self.filter_text:
+                self.filter_input.value = self.filter_text
+    
+    async def clear_filter(self) -> None:
+        """Clear the filter and hide input."""
+        self.filter_text = ""
+        if self.filter_input:
+            self.filter_input.value = ""
+        filter_container = self.query_one("#filter-container", Container)
+        filter_container.styles.height = 0  # Set height to 0 to hide
+        self.post_message(self.FilterChanged(""))
+        # Focus the table after clearing filter
+        self.table.focus()
+    
+    async def on_key(self, event: events.Key) -> None:
+        """Handle key events."""
+        # Check if filter input has focus
+        focused = self.app.focused
+        if focused and isinstance(focused, Input) and focused == self.filter_input:
+            # Only handle specific navigation keys
+            if event.key == "escape":
+                # Escape clears the filter
+                await self.clear_filter()
+                event.stop()
+                return
+            elif event.key in ("tab", "enter", "down"):
+                # Tab, Enter, or Down moves focus to the table
+                self.table.focus()
+                event.stop()
+                return
+            # For typing keys, don't process them here but prevent parent handling
+            # The Input widget will handle these keys naturally
+            return
+    
+    async def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle input changes for filtering."""
+        logger.info(f"=== FilterableDataTable.on_input_changed: {event.value} ===")
+        if event.input == self.filter_input:
+            self.filter_text = event.value
+            self.post_message(self.FilterChanged(event.value))
+    
+    def on_mount(self) -> None:
+        """When the widget is mounted, ensure DataTable starts at top."""
+        # Force the DataTable to start at the top
+        self.table.scroll_to(0, 0, animate=False)
+
+
 
 
 class WelcomeScreen(BaseScreen):
@@ -103,7 +246,7 @@ class WelcomeScreen(BaseScreen):
         yield Header()
         with Container(classes="welcome-container"):
             yield Static(
-                """[bold #cba6f7]
+                f"""[bold #cba6f7]
     ███████╗██╗███╗   ███╗██╗   ██╗██╗      ██████╗██╗  ██╗██╗██████╗ 
     ██╔════╝██║████╗ ████║██║   ██║██║     ██╔════╝██║  ██║██║██╔══██╗
     ███████╗██║██╔████╔██║██║   ██║██║     ██║     ███████║██║██████╔╝
@@ -113,6 +256,7 @@ class WelcomeScreen(BaseScreen):
 [/bold #cba6f7]
 
 [bold #f9e2af]Welcome to Simulchip Collection Manager![/bold #f9e2af]
+[dim]Version {__version__}[/dim]
 
 Navigate with keyboard shortcuts:
   • [#89dceb]p[/] - Manage Packs
@@ -151,6 +295,7 @@ Your collection is automatically loaded.""",
     def action_quit(self) -> None:
         """Quit the app."""
         self.app.exit("quit")
+    
 
 
 class PacksScreen(BaseScreen):
@@ -166,30 +311,6 @@ class PacksScreen(BaseScreen):
         text-style: bold;
     }
     
-    DataTable {
-        height: 1fr;
-        border: solid #45475a;       /* Surface1 */
-        background: #1e1e2e;         /* Base */
-    }
-    
-    DataTable > .datatable--header {
-        background: #313244;         /* Surface0 */
-        color: #cba6f7;              /* Mauve */
-        text-style: bold;
-    }
-    
-    DataTable > .datatable--cursor {
-        background: #cba6f7 20%;     /* Mauve with transparency */
-    }
-    
-    DataTable > .datatable--odd-row {
-        background: #181825;         /* Mantle */
-    }
-    
-    DataTable > .datatable--even-row {
-        background: #1e1e2e;         /* Base */
-    }
-    
     .status-bar {
         height: 1;
         background: #313244;         /* Surface0 */
@@ -198,22 +319,13 @@ class PacksScreen(BaseScreen):
         content-align: center middle;
     }
     
-    .filter-input {
-        height: 3;
-        margin: 0 1;
-        border: solid #45475a;       /* Surface1 */
-        background: #313244;         /* Surface0 */
-        color: #cdd6f4;              /* Text */
-        display: none;
+    PacksScreen {
+        layout: vertical;
     }
     
-    .filter-input Input {
-        background: #313244;         /* Surface0 */
-        border: none;
-    }
-    
-    .filter-input Input:focus {
-        border: none;
+    PacksScreen FilterableDataTable {
+        height: 1fr;
+        align: left top;
     }
     """
     
@@ -225,7 +337,6 @@ class PacksScreen(BaseScreen):
         Binding("space", "toggle_pack", "Toggle", show=False),
         Binding("m", "toggle_mine", "Mine"),
         Binding("/", "start_filter", "Filter"),
-        Binding("escape", "clear_filter", "Clear Filter", show=False),
         Binding("ctrl+s", "save", "Save"),
         Binding("q", "quit", "Quit"),
     ]
@@ -237,21 +348,20 @@ class PacksScreen(BaseScreen):
         self.pack_codes = []  # Track pack codes by row index
         self.show_mine_only = False  # Filter state
         self.filter_text = ""  # Search filter text
-        self.filter_input = None  # Will be set in compose
+        self.filterable_table = None  # Will be set in compose
     
     def compose(self) -> ComposeResult:
         """Create the packs screen UI."""
         yield Header(show_clock=True, classes="header")
         yield Static("Packs Management", classes="title")
         
-        # Filter input (initially hidden) - now on top
-        with Container(classes="filter-input", id="filter-container"):
-            self.filter_input = Input(placeholder="Type to filter packs...", id="filter-input")
-            yield self.filter_input
-        
-        table = DataTable(id="pack-table", zebra_stripes=True)
-        table.add_columns("Status", "Code", "Name", "Cycle", "Date")
-        yield table
+        # Use the FilterableDataTable widget
+        self.filterable_table = FilterableDataTable(
+            placeholder="Type to filter packs...",
+            table_id="pack-table"
+        )
+        self.filterable_table.data_table.add_columns("Status", "Code", "Name", "Cycle", "Date")
+        yield self.filterable_table
         
         yield Static(
             "nav: (w)elcome (c)ards (s)tats • Space: toggle • (m)ine • /: filter • Ctrl+S: save • q: quit",
@@ -265,10 +375,20 @@ class PacksScreen(BaseScreen):
         """Initialize when the screen is mounted."""
         super().on_mount()  # Initialize log panel state
         await self.populate_table()
+        # Schedule a scroll fix after the screen is fully rendered
+        self.set_timer(0.1, self._fix_table_scroll)
+    
+    def _fix_table_scroll(self) -> None:
+        """Fix table scroll position after rendering."""
+        table = self.filterable_table.data_table
+        # Force scroll to absolute top
+        table.scroll_to(0, 0, animate=False)
+        if len(self.pack_codes) > 0:
+            table.move_cursor(row=0)
     
     async def populate_table(self) -> None:
         """Populate the pack table with data."""
-        table = self.query_one("#pack-table", DataTable)
+        table = self.filterable_table.data_table
         table.clear()
         self.pack_codes.clear()
         
@@ -329,13 +449,23 @@ class PacksScreen(BaseScreen):
         
         self.query_one("#status", Static).update(status_text)
         
+        # Scroll to top and move cursor to first row after populating
+        if len(self.pack_codes) > 0:
+            table.move_cursor(row=0)
+            # Force scroll to the very top
+            table.scroll_to(0, 0, animate=False)
+            # Also try scrolling the widget itself
+            self.filterable_table.scroll_to(0, 0, animate=False)
+            # Add another attempt with a slight delay
+            self.set_timer(0.01, lambda: table.scroll_to(0, 0, animate=False))
+        
         # Only focus the table if no input is currently focused
         if not (self.app.focused and isinstance(self.app.focused, Input)):
             table.focus()
     
     def action_toggle_pack(self) -> None:
         """Toggle the selected pack's ownership status."""
-        table = self.query_one("#pack-table", DataTable)
+        table = self.filterable_table.data_table
         if table.cursor_row is not None and table.cursor_row < len(self.pack_codes):
             # Get the pack code from our tracked list
             pack_code = self.pack_codes[table.cursor_row]
@@ -414,48 +544,13 @@ class PacksScreen(BaseScreen):
     
     def action_start_filter(self) -> None:
         """Start filtering packs."""
-        filter_container = self.query_one("#filter-container", Container)
-        filter_container.styles.display = "block"
-        if self.filter_input:
-            self.filter_input.focus()
-            self.filter_input.value = self.filter_text
+        self.filterable_table.show_filter()
     
-    async def action_clear_filter(self) -> None:
-        """Clear the filter and hide input."""
-        self.filter_text = ""
-        if self.filter_input:
-            self.filter_input.value = ""
-        filter_container = self.query_one("#filter-container", Container)
-        filter_container.styles.display = "none"
+    async def on_filterable_data_table_filter_changed(self, message: FilterableDataTable.FilterChanged) -> None:
+        """Handle filter changes from the FilterableDataTable."""
+        self.filter_text = message.filter_text
         await self.populate_table()
-        # Focus the table after clearing filter
-        table = self.query_one("#pack-table", DataTable)
-        table.focus()
     
-    async def on_key(self, event) -> None:
-        """Handle key events."""
-        # Check if filter input has focus
-        focused = self.app.focused
-        if focused and isinstance(focused, Input):
-            # Handle navigation keys when in filter input
-            if event.key == "escape":
-                # Escape clears the filter
-                await self.action_clear_filter()
-            elif event.key in ("tab", "enter", "down"):
-                # Tab, Enter, or Down moves focus to the table
-                table = self.query_one("#pack-table", DataTable)
-                table.focus()
-            # Don't process any other keys - Input widget will handle them
-            return
-        
-        # Only handle keys that aren't in BINDINGS to avoid double-firing
-        # Most keys are handled by BINDINGS, we only need special cases here
-    
-    async def on_input_changed(self, event: Input.Changed) -> None:
-        """Handle input changes for filtering."""
-        if event.input == self.filter_input:
-            self.filter_text = event.value
-            await self.populate_table()
 
 
 class CardsScreen(BaseScreen):
@@ -471,36 +566,21 @@ class CardsScreen(BaseScreen):
         text-style: bold;
     }
     
-    DataTable {
-        height: 1fr;
-        border: solid #45475a;       /* Surface1 */
-        background: #1e1e2e;         /* Base */
-    }
-    
-    DataTable > .datatable--header {
-        background: #313244;         /* Surface0 */
-        color: #cba6f7;              /* Mauve */
-        text-style: bold;
-    }
-    
-    DataTable > .datatable--cursor {
-        background: #cba6f7 20%;     /* Mauve with transparency */
-    }
-    
-    DataTable > .datatable--odd-row {
-        background: #181825;         /* Mantle */
-    }
-    
-    DataTable > .datatable--even-row {
-        background: #1e1e2e;         /* Base */
-    }
-    
     .status-bar {
         height: 1;
         background: #313244;         /* Surface0 */
         color: #a6adc8;              /* Subtext0 */
         text-align: center;
         content-align: center middle;
+    }
+    
+    CardsScreen {
+        layout: vertical;
+    }
+    
+    CardsScreen FilterableDataTable {
+        height: 1fr;
+        align: left top;
     }
     """
     
@@ -512,6 +592,7 @@ class CardsScreen(BaseScreen):
         Binding("+,=", "increment_card", "Add"),
         Binding("-,_", "decrement_card", "Remove"),
         Binding("m", "toggle_mine", "Mine"),
+        Binding("/", "focus_filter", "Filter", show=False),
         Binding("ctrl+s", "save", "Save"),
         Binding("q", "quit", "Quit"),
     ]
@@ -522,16 +603,24 @@ class CardsScreen(BaseScreen):
         self.api = api
         self.card_codes = []  # Track card codes by row index
         self.show_mine_only = False  # Filter state
+        self.filter_text = ""  # Search filter text
+        self.filterable_table = None  # Will be set in compose
     
     def compose(self) -> ComposeResult:
         """Create the cards screen UI."""
         yield Header(show_clock=True)
         yield Static("Cards Management", classes="title")
-        table = DataTable(id="card-table", zebra_stripes=True)
-        table.add_columns("Count", "Card", "Type", "Faction", "Pack")
-        yield table
+        
+        # Use the FilterableDataTable widget
+        self.filterable_table = FilterableDataTable(
+            placeholder="Type to filter cards...",
+            table_id="card-table"
+        )
+        self.filterable_table.data_table.add_columns("Count", "Card", "Type", "Faction", "Pack")
+        yield self.filterable_table
+        
         yield Static(
-            "nav: (w)elcome (p)acks (s)tats • Space/+: add • -: remove • (m)ine • Ctrl+S: save • q: quit",
+            "nav: (w)elcome (p)acks (s)tats • +: add • -: remove • (m)ine • /: filter • Ctrl+S: save • q: quit",
             classes="status-bar",
             id="status"
         )
@@ -545,7 +634,7 @@ class CardsScreen(BaseScreen):
     
     async def populate_card_table(self) -> None:
         """Populate the card table with data."""
-        table = self.query_one("#card-table", DataTable)
+        table = self.filterable_table.data_table
         table.clear()
         self.card_codes.clear()
         
@@ -568,6 +657,17 @@ class CardsScreen(BaseScreen):
         else:
             filtered_cards = all_cards
         
+        # Apply text filter if active
+        if self.filter_text:
+            search_lower = self.filter_text.lower()
+            filtered_cards = [
+                c for c in filtered_cards
+                if search_lower in c.get("title", "").lower() or
+                   search_lower in c.get("type_code", "").lower() or
+                   search_lower in c.get("faction_code", "").lower() or
+                   search_lower in c.get("pack_code", "").lower()
+            ]
+        
         # Sort by name
         filtered_cards.sort(key=lambda c: c.get("title", ""))
         
@@ -588,18 +688,36 @@ class CardsScreen(BaseScreen):
             )
         
         # Update status bar with filter state
+        status_parts = []
         if self.show_mine_only:
-            status_text = "nav: (w)elcome (p)acks (s)tats • (m)ine filter ON • +: add • -: remove • q: quit"
+            status_parts.append("(m)ine filter ON")
+        if self.filter_text:
+            status_parts.append(f"filter: '{self.filter_text}'")
+        
+        if status_parts:
+            status_text = f"nav: (w)elcome (p)acks (s)tats • {' • '.join(status_parts)} • +: add • -: remove • q: quit"
         else:
-            status_text = "nav: (w)elcome (p)acks (s)tats • +: add • -: remove • (m)ine • Ctrl+S: save • q: quit"
+            status_text = "nav: (w)elcome (p)acks (s)tats • +: add • -: remove • (m)ine • /: filter • Ctrl+S: save • q: quit"
         
         self.query_one("#status", Static).update(status_text)
-        table.focus()
+        
+        # Scroll to top and move cursor to first row after populating
+        if len(self.card_codes) > 0:
+            table.move_cursor(row=0)
+            # Force scroll to the very top
+            table.scroll_to(0, 0, animate=False)
+        
+        # Only focus the table if no input is currently focused
+        if not (self.app.focused and isinstance(self.app.focused, Input)):
+            table.focus()
     
     def action_increment_card(self) -> None:
         """Increment the selected card count."""
+        # Don't process if filter has focus
+        if self.app.focused == self.filterable_table.filter_input:
+            return
         logger.info("=== action_increment_card called ===")
-        table = self.query_one("#card-table", DataTable)
+        table = self.filterable_table.data_table
         if table.cursor_row is not None and table.cursor_row < len(self.card_codes):
             card_code = self.card_codes[table.cursor_row]
             card_name = table.get_cell_at((table.cursor_row, 1))
@@ -616,15 +734,17 @@ class CardsScreen(BaseScreen):
             table.update_cell_at((table.cursor_row, 0), new_display)
             logger.info(f"Updated table cell to: {new_display}")
             
-            self.notify(f"Card {card_name} incremented. Total: [#a6e3a1]{new_count}[/]")
             logger.info(f"Card {card_code} incremented to {new_count}")
         else:
             logger.warning(f"Cannot increment: cursor_row={table.cursor_row}, card_codes_len={len(self.card_codes)}")
     
     def action_decrement_card(self) -> None:
         """Decrement the selected card count."""
+        # Don't process if filter has focus
+        if self.app.focused == self.filterable_table.filter_input:
+            return
         logger.info("=== action_decrement_card called ===")
-        table = self.query_one("#card-table", DataTable)
+        table = self.filterable_table.data_table
         if table.cursor_row is not None and table.cursor_row < len(self.card_codes):
             card_code = self.card_codes[table.cursor_row]
             card_name = table.get_cell_at((table.cursor_row, 1))
@@ -641,7 +761,6 @@ class CardsScreen(BaseScreen):
             table.update_cell_at((table.cursor_row, 0), new_display)
             logger.info(f"Updated table cell to: {new_display}")
             
-            self.notify(f"Card {card_name} decremented. Total: [#f38ba8]{new_count}[/]")
             logger.info(f"Card {card_code} decremented to {new_count}")
         else:
             logger.warning(f"Cannot decrement: cursor_row={table.cursor_row}, card_codes_len={len(self.card_codes)}")
@@ -703,11 +822,15 @@ class CardsScreen(BaseScreen):
         logger.info(f"Mine filter toggled: {self.show_mine_only}")
         self.run_worker(self.populate_card_table)
     
-    async def on_key(self, event) -> None:
-        """Handle key events."""
-        # Most keys are handled by BINDINGS, we only need special cases here
-        # to avoid double-firing events
-        pass
+    def action_focus_filter(self) -> None:
+        """Show and focus the filter input."""
+        self.filterable_table.show_filter()
+    
+    async def on_filterable_data_table_filter_changed(self, message: FilterableDataTable.FilterChanged) -> None:
+        """Handle filter changes from the FilterableDataTable."""
+        self.filter_text = message.filter_text
+        await self.populate_card_table()
+    
 
 
 class StatsScreen(BaseScreen):
@@ -952,10 +1075,9 @@ class CollectionMainApp(App[str]):
     """
     
     BINDINGS = [
-        Binding("d", "debug_mode", "Debug"),
+        Binding("ctrl+p", "screenshot", "Screenshot", show=False),
     ]
     
-    debug_mode = False
     log_visible = False  # Track log panel state across screens
     
     def __init__(self, collection_manager, api, collection_file=None):
@@ -979,12 +1101,11 @@ class CollectionMainApp(App[str]):
         """Create app-level components - none needed since we use screens."""
         return []
     
-    def action_debug_mode(self) -> None:
-        """Toggle debug mode - shows notifications for actions."""
-        self.debug_mode = not self.debug_mode
-        status = "ON" if self.debug_mode else "OFF"
-        self.notify(f"Debug mode: {status}", timeout=3)
-        logger.info(f"Debug mode toggled: {status}")
-        
-        if self.debug_mode:
-            self.notify("Actions will be logged to simulchip_debug.log", timeout=5)
+    def action_screenshot(self) -> None:
+        """Take a screenshot and save to current directory."""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
+        filename = f"simulchip_screenshot_{timestamp}.svg"
+        self.save_screenshot(filename)
+        self.notify(f"Screenshot saved as {filename}")
+    

@@ -56,3 +56,4 @@ my_collection.yaml
 my_collection.json
 .cache/
 simulchip_debug.log
+*.svg
