@@ -571,6 +571,23 @@ class CollectionManager:
         else:
             self.card_diffs[card_code] = difference
 
+    def set_card_count(self, card_code: str, count: int) -> None:
+        """Set absolute card count.
+
+        Args:
+            card_code: Card code to modify
+            count: Absolute count to set
+        """
+        if not card_code:
+            raise ValueError("Card code cannot be empty")
+        
+        if count < 0:
+            raise ValueError("Card count cannot be negative")
+
+        expected_count = self.get_expected_card_count(card_code)
+        difference = count - expected_count
+        self.set_card_difference(card_code, difference)
+
     def get_all_cards_with_differences(self) -> Dict[str, Dict[str, int]]:
         """Get all cards with their expected counts and differences.
 

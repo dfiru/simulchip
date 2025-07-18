@@ -99,11 +99,6 @@ class KeyMapper:
     }
 
     SINGLE_CHARS = {
-        # Vim-style navigation
-        "j": KeyAction.UP,
-        "k": KeyAction.DOWN,
-        "g": KeyAction.TOP,
-        "G": KeyAction.BOTTOM,
         # Control characters
         "\x15": KeyAction.PAGE_UP,  # Ctrl+U
         "\x04": KeyAction.PAGE_DOWN,  # Ctrl+D

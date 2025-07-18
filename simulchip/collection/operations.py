@@ -9,35 +9,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..api.netrunnerdb import NetrunnerDBAPI, PackData
-from ..paths import get_cache_locations
 from .manager import CollectionManager
 
-
-def get_reset_items(collection_path: Path) -> List[str]:
-    """Get list of items that would be reset.
-
-    Args:
-        collection_path: Path to collection file
-
-    Returns:
-        List of description strings for items to be reset
-    """
-    items_to_reset = []
-
-    # Check collection file
-    if collection_path.exists():
-        items_to_reset.append(f"Collection file: {collection_path}")
-
-    # Check for API cache files in all locations
-    for cache_dir in get_cache_locations():
-        if cache_dir.exists():
-            cache_files = list(cache_dir.glob("*"))
-            if cache_files:
-                items_to_reset.append(
-                    f"API cache files in {cache_dir}: {len(cache_files)} files"
-                )
-
-    return items_to_reset
 
 
 def get_or_create_manager(

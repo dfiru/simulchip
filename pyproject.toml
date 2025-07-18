@@ -39,6 +39,7 @@ dependencies = [
     "typer[all]>=0.9.0",
     "rich>=13.0.0",
     "rich-pixels>=3.0.0",
+    "textual>=0.82.0",
 ]
 
 [project.urls]

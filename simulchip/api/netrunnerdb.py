@@ -70,7 +70,7 @@ class PackData(TypedDict):
         position: Pack position in the cycle.
         cycle_code: Cycle code this pack belongs to.
         cycle: Full cycle name.
-        date_release: Release date in YYYY-MM-DD format.
+        date_release: Release date in YYYY-MM-DD format (can be None for unreleased packs).
     """
 
     code: str
@@ -78,7 +78,7 @@ class PackData(TypedDict):
     position: int
     cycle_code: str
     cycle: str
-    date_release: str
+    date_release: Optional[str]
 
 
 class DecklistData(TypedDict):
@@ -219,6 +219,18 @@ class NetrunnerDBAPI:
         except ValueError as e:
             raise APIError(f"Invalid JSON response: {str(e)}", url=url) from e
 
+    def get_all_cards_list(self) -> List[CardData]:
+        """Fetch all cards from NetrunnerDB as a list.
+
+        Returns:
+            List of card data dictionaries
+
+        Raises:
+            APIError: If API request fails
+        """
+        cards_dict = self.get_all_cards()
+        return list(cards_dict.values())
+
     def get_all_cards(self) -> Dict[str, CardData]:
         """Fetch all cards from NetrunnerDB with smart caching.
 
@@ -295,6 +307,24 @@ class NetrunnerDBAPI:
         except Exception as e:
             raise APIError(f"Failed to process cards data: {str(e)}") from e
 
+    def _normalize_pack_data(self, raw_packs: List[Dict[str, Any]]) -> List[PackData]:
+        """Normalize pack data to handle None values and ensure consistency.
+        
+        Args:
+            raw_packs: Raw pack data from API or cache
+            
+        Returns:
+            Normalized pack data
+        """
+        normalized_packs: List[PackData] = []
+        for pack in raw_packs:
+            normalized_pack = dict(pack)
+            # Ensure date_release is properly handled (convert None to empty string)
+            if normalized_pack.get("date_release") is None:
+                normalized_pack["date_release"] = ""
+            normalized_packs.append(normalized_pack)
+        return normalized_packs
+
     def get_all_packs(self, skip_cache_check: bool = False) -> List[PackData]:
         """Fetch all pack information with smart caching.
 
@@ -313,10 +343,13 @@ class NetrunnerDBAPI:
         # Try cache first (but don't check validity if we're called from get_all_cards)
         cached_data = self.cache.get_cached_packs()
         if cached_data:
+            # Normalize cached data to handle None values
+            normalized_cached = self._normalize_pack_data(cached_data)
+            
             if skip_cache_check:
                 # Skip validation when called from get_all_cards
-                self._packs_cache = cached_data  # type: ignore[assignment]
-                return cached_data  # type: ignore[return-value]
+                self._packs_cache = normalized_cached
+                return normalized_cached
             else:
                 validity_result = self.check_cache_validity_with_reason()
                 if validity_result["valid"]:
@@ -324,8 +357,8 @@ class NetrunnerDBAPI:
                         print(
                             f"💾 Using cached pack data (cache is fresh, last updated: {validity_result['last_updated']})"
                         )
-                    self._packs_cache = cached_data  # type: ignore[assignment]
-                    return cached_data  # type: ignore[return-value]
+                    self._packs_cache = normalized_cached
+                    return normalized_cached
                 else:
                     if _should_show_cache_messages():
                         print(f"🔄 Cache invalidated: {validity_result['reason']}")
@@ -345,9 +378,11 @@ class NetrunnerDBAPI:
                     f"Expected list in 'data' field, got {type(response['data']).__name__}"
                 )
 
-            packs: List[PackData] = response["data"]
+            # Normalize pack data to handle None values
+            packs = self._normalize_pack_data(response["data"])
+            
             self._packs_cache = packs
-            self.cache.cache_packs(response["data"])
+            self.cache.cache_packs(packs)
 
             # Update cache metadata when fetching packs directly
             if not skip_cache_check:
