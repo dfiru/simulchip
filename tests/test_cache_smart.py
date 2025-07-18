@@ -149,7 +149,7 @@ class TestOfflineMode:
 
         # Pre-populate cache
         self.cached_cards = {"01001": {"code": "01001", "title": "Test Card"}}
-        self.cached_packs = [{"code": "core", "name": "Core Set"}]
+        self.cached_packs = [{"code": "core", "name": "Core Set", "date_release": ""}]
 
         self.api.cache.cache_cards(self.cached_cards)
         self.api.cache.cache_packs(self.cached_packs)
