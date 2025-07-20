@@ -84,13 +84,12 @@ class FilterableDataTable(Widget):
     }
 
     .filter-input-container {
-        height: 0;                   /* Start with no height */
+        display: none;               /* Start hidden */
+        height: 3;                   /* Fixed height when shown */
         margin: 0 1;
         border: solid #45475a;       /* Surface1 */
         background: #313244;         /* Surface0 */
         color: #cdd6f4;              /* Text */
-        overflow: hidden;            /* Hide content when height is 0 */
-        transition: height 0.2s;     /* Smooth transition */
     }
 
     .filter-input-container Input {
@@ -151,7 +150,9 @@ class FilterableDataTable(Widget):
         self.filter_input = None
         self.filter_text = ""
         # Create the table here so it's available before compose
-        self.table = DataTable(id=self.table_id, zebra_stripes=True, show_header=True)
+        self.table = DataTable(
+            id=self.table_id, zebra_stripes=True, show_header=True, fixed_rows=0
+        )
 
     def compose(self) -> ComposeResult:
         """Create the filterable table UI."""
@@ -172,6 +173,7 @@ class FilterableDataTable(Widget):
         """Show and focus the filter input."""
         logger.info("=== FilterableDataTable.show_filter called ===")
         filter_container = self.query_one("#filter-container", Container)
+        filter_container.styles.display = "block"  # Make visible
         filter_container.styles.height = 3  # Set height to show
         if self.filter_input:
             logger.info(f"Setting focus to filter_input: {self.filter_input}")
@@ -187,6 +189,7 @@ class FilterableDataTable(Widget):
             self.filter_input.value = ""
         filter_container = self.query_one("#filter-container", Container)
         filter_container.styles.height = 0  # Set height to 0 to hide
+        filter_container.styles.display = "none"  # Remove from layout completely
         self.post_message(self.FilterChanged(""))
         # Focus the table after clearing filter
         self.table.focus()
@@ -222,6 +225,13 @@ class FilterableDataTable(Widget):
         """When the widget is mounted, ensure DataTable starts at top."""
         # Force the DataTable to start at the top
         self.table.scroll_to(0, 0, animate=False)
+        # Ensure filter container is properly hidden on mount
+        try:
+            filter_container = self.query_one("#filter-container", Container)
+            filter_container.styles.display = "none"
+            filter_container.styles.height = 0
+        except Exception:
+            pass  # Container might not be ready yet
 
 
 class WelcomeScreen(BaseScreen):
@@ -394,21 +404,18 @@ class PacksScreen(BaseScreen):
         """Initialize when the screen is mounted."""
         super().on_mount()  # Initialize log panel state
         await self.populate_table()
-        # Schedule a scroll fix after the screen is fully rendered
-        self.set_timer(0.1, self._fix_table_scroll)
-
-    def _fix_table_scroll(self) -> None:
-        """Fix table scroll position after rendering."""
-        table = self.filterable_table.data_table
-        # Force scroll to absolute top
-        table.scroll_to(0, 0, animate=False)
-        if len(self.pack_codes) > 0:
-            table.move_cursor(row=0)
 
     async def populate_table(self) -> None:
         """Populate the pack table with data."""
         table = self.filterable_table.data_table
+
+        # Reset cursor position before clearing
+        if table.row_count > 0:
+            table.cursor_coordinate = (0, 0)
+
+        # Clear the table
         table.clear()
+
         self.pack_codes.clear()
 
         # Get all packs
@@ -473,15 +480,11 @@ class PacksScreen(BaseScreen):
 
         self.query_one("#status", Static).update(status_text)
 
-        # Scroll to top and move cursor to first row after populating
+        # Move cursor to first row if we have data
         if len(self.pack_codes) > 0:
             table.move_cursor(row=0)
-            # Force scroll to the very top
+            # Force scroll to top after moving cursor
             table.scroll_to(0, 0, animate=False)
-            # Also try scrolling the widget itself
-            self.filterable_table.scroll_to(0, 0, animate=False)
-            # Add another attempt with a slight delay
-            self.set_timer(0.01, lambda: table.scroll_to(0, 0, animate=False))
 
         # Only focus the table if no input is currently focused
         if not (self.app.focused and isinstance(self.app.focused, Input)):
@@ -742,6 +745,10 @@ class CardsScreen(BaseScreen):
             table.move_cursor(row=0)
             # Force scroll to the very top
             table.scroll_to(0, 0, animate=False)
+            # Also try scrolling the widget itself
+            self.filterable_table.scroll_to(0, 0, animate=False)
+            # Add another attempt with a slight delay
+            self.set_timer(0.01, lambda: table.scroll_to(0, 0, animate=False))
 
         # Only focus the table if no input is currently focused
         if not (self.app.focused and isinstance(self.app.focused, Input)):
