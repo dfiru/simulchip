@@ -32,7 +32,6 @@ The result is a clean, efficient Python library and CLI tool that does exactly w
 - 💾 **Smart Caching**: Downloads card data and images once, reuses for speed and to be as nice as possible to NRDB apis
 - 🏷️ **Identity-Based Organization**: Files organized by identity names for easy browsing
 - 🔍 **Advanced Filtering**: Search and filter collections with real-time updates
-- 📊 **Batch Processing**: Generate proxies for multiple decks at once
 - 🐍 **Pure Python**: Clean library architecture with CLI as a lightweight interface
 
 ## Installation
@@ -46,24 +45,28 @@ pip install simulchip
 After installation, you'll have both the Python library and the `simulchip` command-line tool available.
 
 **Requirements:**
+
 - Python 3.10 or higher
 - Compatible with Python 3.10, 3.11, 3.12, and 3.13
 
 ## Quick Start
 
-### 1. Initialize Your Collection
+### 1. Launch the Collection Manager
+
 ```bash
-# Initialize a new collection
-simulchip collect init
-
-# Interactively manage packs in your collection
-simulchip collect packs
-
-# Interactively manage individual cards
-simulchip collect cards
+# Launch the interactive TUI collection manager
+simulchip collect
 ```
 
+This opens an interactive terminal interface where you can:
+
+- Manage your pack collection
+- Adjust individual card quantities
+- View collection statistics
+- Reset collection data
+
 ### 2. Generate Proxy Sheets
+
 ```bash
 # Generate proxies for a deck
 simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
@@ -75,18 +78,12 @@ simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99ca
 
 ### 3. Interactive Management
 
-The collection commands provide rich terminal interfaces with filtering, navigation, and real-time updates:
+The collection manager provides a rich terminal interface with multiple screens:
 
-```bash
-# Manage packs with filtering and search
-simulchip collect packs
-
-# Manage individual cards with detailed controls
-simulchip collect cards
-
-# View collection statistics
-simulchip collect stats
-```
+- **Pack Management**: Toggle ownership of entire packs with filtering and search
+- **Card Management**: Adjust individual card quantities with detailed controls
+- **Statistics**: View collection completion percentages and card counts
+- **Navigation**: Switch between screens using keyboard shortcuts (Tab/Shift+Tab)
 
 ## Command-Line Interface
 
@@ -95,25 +92,20 @@ The `simulchip` CLI is the primary interface for managing your collection and ge
 ### Collection Management
 
 ```bash
-# Initialize a new collection (creates ~/.simulchip/collection.toml)
-simulchip collect init
-
-# Interactive pack management with filtering and navigation
-simulchip collect packs
-
-# Interactive card management with filtering and navigation
-simulchip collect cards
-
-# Show collection statistics
-simulchip collect stats
-
-# Reset collection data and re-download pack/card information
-simulchip collect reset
+# Launch the interactive collection manager (creates ~/.simulchip/collection.toml if needed)
+simulchip collect
 
 # Use a custom collection file
-simulchip collect init --collection ./my-collection.toml
-simulchip collect packs --collection ./my-collection.toml
+simulchip collect --file ./my-collection.toml
 ```
+
+Within the collection manager TUI, you can:
+
+- **Tab 1 - Packs**: Toggle pack ownership (space bar), filter packs (/), navigate with arrow keys
+- **Tab 2 - Cards**: Adjust card quantities (+/-), filter cards (/), toggle "mine" filter (m)
+- **Tab 3 - Stats**: View collection statistics by pack and overall completion
+- **Tab 4 - Reset**: Clear collection data and re-download pack/card information
+- **Save**: Press Ctrl+S to save changes, Ctrl+C to exit
 
 ### Proxy Generation
 
@@ -146,6 +138,7 @@ simulchip proxy DECK_ID --collection ./my-collection.toml
 ### Proxy Output Structure
 
 By default, proxy PDFs are saved to `decks/` with the following structure based on identity names:
+
 ```
 decks/
 ├── corporation/
@@ -160,9 +153,10 @@ This creates meaningful folder names based on the actual identity cards rather t
 
 ### CLI Configuration
 
-The CLI uses `~/.simulchip/collection.toml` as the default collection file. You can override this with the `--collection` flag on most commands.
+The CLI uses `~/.simulchip/collection.toml` as the default collection file. You can override this with the `--file` flag when launching the collection manager.
 
 #### Interactive Features
+
 - **Rich Terminal Interface**: Color-coded tables with dynamic viewport sizing
 - **Real-time Filtering**: Type to filter packs/cards with instant updates
 - **Keyboard Navigation**: Arrow keys, page up/down, vim-style shortcuts
@@ -174,6 +168,7 @@ The CLI uses `~/.simulchip/collection.toml` as the default collection file. You 
 Simulchip also provides a comprehensive Python library for building custom tools and integrations.
 
 ### Quick Library Example
+
 ```python
 from simulchip.api.netrunnerdb import NetrunnerDBAPI
 from simulchip.collection.operations import get_or_create_manager
@@ -197,11 +192,13 @@ if result.stats.missing_cards > 0:
 ```
 
 ### Library Documentation
+
 For detailed library documentation, API reference, and advanced usage:
 
 📚 **[Full API Documentation](https://dfiru.github.io/simulchip/)**
 
 The library includes modules for:
+
 - **API Integration** (`simulchip.api`) - NetrunnerDB communication
 - **Collection Management** (`simulchip.collection`) - Local collection handling
 - **Deck Comparison** (`simulchip.comparison`) - Deck analysis and comparison
@@ -242,6 +239,7 @@ This design ensures the library can be used in any Python application while the 
 ## Finding Pack and Card Codes
 
 ### Pack Codes
+
 ```python
 # List all available packs
 api = NetrunnerDBAPI()
@@ -251,6 +249,7 @@ for pack in sorted(packs, key=lambda p: p.get("date_release", ""), reverse=True)
 ```
 
 Common pack codes:
+
 - `core` - Core Set
 - `sg` - System Gateway
 - `elev` - Elevation
@@ -258,7 +257,9 @@ Common pack codes:
 - `su21` - System Update 2021
 
 ### Card Codes
+
 Card codes follow the format: `PPNNN` where:
+
 - `PP` = Pack number (01 = Core Set, 30 = System Gateway, etc.)
 - `NNN` = Card number within pack
 
@@ -288,6 +289,7 @@ pip install -e ".[dev]"
 This installs all development dependencies including testing, linting, and documentation tools.
 
 ### Dependencies
+
 - `requests` - HTTP requests to NetrunnerDB API
 - `reportlab` - PDF generation
 - `Pillow` - Image processing
@@ -297,6 +299,7 @@ This installs all development dependencies including testing, linting, and docum
 - `rich-pixels` - Terminal image rendering
 
 ### Documentation
+
 - **API Documentation**: [https://dfiru.github.io/simulchip/](https://dfiru.github.io/simulchip/)
 - **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Code of Conduct**: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)

@@ -27,14 +27,11 @@ The quickest way to get started is with the CLI:
 
 .. code-block:: bash
 
-   # Initialize a new collection
-   simulchip collect init
+   # Launch the interactive collection manager TUI
+   simulchip collect
 
-   # Interactive pack management
-   simulchip collect packs
-
-   # Interactive card management
-   simulchip collect cards
+   # Use a custom collection file
+   simulchip collect --file ./my-collection.toml
 
    # Generate proxies for a deck
    simulchip proxy https://netrunnerdb.com/en/decklist/7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
@@ -114,24 +111,23 @@ Generate proxy PDFs for missing cards:
 CLI Reference
 -------------
 
-Collection Management Commands:
+Collection Management:
 
 .. code-block:: bash
 
-   # Initialize collection
-   simulchip collect init
+   # Launch the interactive collection manager
+   simulchip collect
 
-   # Interactive pack management
-   simulchip collect packs
+   # Use a custom collection file
+   simulchip collect --file ./my-collection.toml
 
-   # Interactive card management
-   simulchip collect cards
+Within the collection manager TUI:
 
-   # Show collection statistics
-   simulchip collect stats
-
-   # Reset collection data
-   simulchip collect reset
+- **Tab 1 - Packs**: Toggle pack ownership (space), filter packs (/)
+- **Tab 2 - Cards**: Adjust quantities (+/-), filter cards (/), toggle "mine" filter (m)
+- **Tab 3 - Stats**: View collection statistics by pack
+- **Tab 4 - Reset**: Clear collection and re-download data
+- **Navigation**: Tab/Shift+Tab to switch screens, Ctrl+S to save, Ctrl+C to exit
 
 Proxy Generation Commands:
 
