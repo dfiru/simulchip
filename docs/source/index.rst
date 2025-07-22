@@ -27,12 +27,8 @@ Quick Example
 
 .. code-block:: bash
 
-   # Initialize your collection
-   simulchip collect init
-
-   # Manage packs and cards interactively
-   simulchip collect packs
-   simulchip collect cards
+   # Launch the interactive collection manager
+   simulchip collect
 
    # Compare against a decklist and generate proxies
    simulchip proxy https://netrunnerdb.com/en/decklist/12345 --compare-only

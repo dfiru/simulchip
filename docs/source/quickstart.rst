@@ -6,19 +6,13 @@ This guide will help you get started with the Simulchip library.
 Installation
 ------------
 
-Install from source:
+Install from PyPI:
 
 .. code-block:: bash
 
-   git clone https://github.com/dfiru/simulchip.git
-   cd simulchip
-   pip install -e .
+   pip install simulchip
 
-Or install as a dependency:
-
-.. code-block:: bash
-
-   pip install git+https://github.com/dfiru/simulchip.git
+For development work, see the :doc:`installation` guide for instructions on installing from source.
 
 Using the CLI
 --------------

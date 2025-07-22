@@ -105,7 +105,13 @@ Within the collection manager TUI, you can:
 - **Tab 2 - Cards**: Adjust card quantities (+/-), filter cards (/), toggle "mine" filter (m)
 - **Tab 3 - Stats**: View collection statistics by pack and overall completion
 - **Tab 4 - Reset**: Clear collection data and re-download pack/card information
-- **Save**: Press Ctrl+S to save changes, Ctrl+C to exit
+
+**Keyboard Shortcuts:**
+- **Navigation**: Tab/Shift+Tab to switch tabs, or use p/c/s/w for direct navigation
+- **Filtering**: / to start filtering (then Escape to clear)
+- **Pack Management**: Space to toggle pack ownership
+- **Card Management**: +/= to add, -/_ to remove cards, m to toggle "mine" filter
+- **Other**: Ctrl+S to save, Ctrl+C or q to exit, o to toggle log, Ctrl+P for screenshot
 
 ### Proxy Generation
 
@@ -118,6 +124,9 @@ simulchip proxy 7a9e2d43-bd55-45d0-bd2c-99cad2d17d4c
 
 # Compare a deck against your collection (no PDF generation)
 simulchip proxy DECK_ID --compare-only
+
+# Show detailed comparison information
+simulchip proxy DECK_ID --compare-only --detailed
 
 # Generate proxies for all cards (not just missing ones)
 simulchip proxy DECK_ID --all
@@ -133,6 +142,9 @@ simulchip proxy DECK_ID --output ./my-proxies/deck.pdf
 
 # Use custom collection file
 simulchip proxy DECK_ID --collection ./my-collection.toml
+
+# Specify page size (letter, a4, legal)
+simulchip proxy DECK_ID --page-size a4
 ```
 
 ### Proxy Output Structure
