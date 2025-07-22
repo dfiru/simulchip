@@ -7,7 +7,9 @@ This section contains the complete API reference for Simulchip.
    :maxdepth: 2
 
    api
+   cache
    collection
+   comparison
    pdf
    utils
    cli_utils
@@ -17,6 +19,7 @@ This section contains the complete API reference for Simulchip.
    models
    paths
    platform
+   terminal_images
 
 Core Modules
 ------------
@@ -39,3 +42,4 @@ Core Modules
    simulchip.models
    simulchip.paths
    simulchip.platform
+   simulchip.terminal_images
